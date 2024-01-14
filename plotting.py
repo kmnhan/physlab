@@ -10,8 +10,8 @@ from qtpy import QtCore, QtGui, QtWidgets, uic
 class PlotWindow(*uic.loadUiType("plotting.ui")):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("R-T Measurement Plot")
         self.setupUi(self)
+        self.setWindowTitle("R-T Measurement Plot")
         self.combo.currentIndexChanged.connect(self.update_axes)
         self.bin_spin.valueChanged.connect(self.update_plot)
 
