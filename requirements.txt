@@ -1,5 +1,5 @@
-qcodes
-pyvisa==1.11.3
+qcodes>=0.43.0
+pyvisa
 numpy
 xarray
 pyqtgraph
