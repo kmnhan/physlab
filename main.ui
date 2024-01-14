@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>268</width>
-    <height>237</height>
+    <height>265</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,35 +15,27 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="1" column="0">
-     <widget class="QLabel" name="label">
-      <property name="text">
-       <string>Start Temperature (K)</string>
+    <item row="1" column="1">
+     <widget class="QDoubleSpinBox" name="spin_start">
+      <property name="keyboardTracking">
+       <bool>false</bool>
       </property>
-     </widget>
-    </item>
-    <item row="0" column="1">
-     <widget class="QPushButton" name="file_btn">
-      <property name="text">
-       <string>Choose File</string>
+      <property name="minimum">
+       <double>5.000000000000000</double>
       </property>
-     </widget>
-    </item>
-    <item row="2" column="0">
-     <widget class="QLabel" name="label_2">
-      <property name="text">
-       <string>End Temperature (K)</string>
+      <property name="maximum">
+       <double>310.000000000000000</double>
       </property>
      </widget>
     </item>
     <item row="5" column="0">
-     <widget class="QLabel" name="label_3">
+     <widget class="QLabel" name="label_4">
       <property name="text">
-       <string>Measurement Interval (s)</string>
+       <string>Measurement Current (mA)</string>
       </property>
      </widget>
     </item>
-    <item row="5" column="1">
+    <item row="6" column="1">
      <widget class="QDoubleSpinBox" name="spin_delta">
       <property name="keyboardTracking">
        <bool>false</bool>
@@ -58,14 +50,54 @@
        <double>0.100000000000000</double>
       </property>
       <property name="value">
-       <double>0.500000000000000</double>
+       <double>0.000000000000000</double>
       </property>
      </widget>
     </item>
-    <item row="4" column="0">
-     <widget class="QLabel" name="label_4">
+    <item row="0" column="1">
+     <widget class="QPushButton" name="file_btn">
       <property name="text">
-       <string>Measurement Current (mA)</string>
+       <string>Choose File</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="0">
+     <widget class="QLabel" name="label_5">
+      <property name="text">
+       <string>Cooling Rate (K/min)</string>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="0">
+     <widget class="QLabel" name="label_2">
+      <property name="text">
+       <string>End Temperature (K)</string>
+      </property>
+     </widget>
+    </item>
+    <item row="5" column="1">
+     <widget class="QDoubleSpinBox" name="spin_curr">
+      <property name="keyboardTracking">
+       <bool>false</bool>
+      </property>
+      <property name="decimals">
+       <number>3</number>
+      </property>
+      <property name="minimum">
+       <double>0.001000000000000</double>
+      </property>
+      <property name="maximum">
+       <double>10.000000000000000</double>
+      </property>
+      <property name="value">
+       <double>1.000000000000000</double>
+      </property>
+     </widget>
+    </item>
+    <item row="6" column="0">
+     <widget class="QLabel" name="label_3">
+      <property name="text">
+       <string>Measurement Interval (s)</string>
       </property>
      </widget>
     </item>
@@ -76,10 +108,36 @@
       </property>
      </widget>
     </item>
-    <item row="3" column="0">
-     <widget class="QLabel" name="label_5">
+    <item row="7" column="0" colspan="2">
+     <widget class="QPushButton" name="start_btn">
       <property name="text">
-       <string>Temperature Rate (K/min)</string>
+       <string>Start Measurement</string>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="0">
+     <widget class="QLabel" name="label">
+      <property name="text">
+       <string>Start Temperature (K)</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="1">
+     <widget class="QDoubleSpinBox" name="spin_rate">
+      <property name="keyboardTracking">
+       <bool>false</bool>
+      </property>
+      <property name="minimum">
+       <double>0.100000000000000</double>
+      </property>
+      <property name="maximum">
+       <double>5.000000000000000</double>
+      </property>
+      <property name="singleStep">
+       <double>0.100000000000000</double>
+      </property>
+      <property name="value">
+       <double>4.000000000000000</double>
       </property>
      </widget>
     </item>
@@ -99,21 +157,8 @@
       </property>
      </widget>
     </item>
-    <item row="1" column="1">
-     <widget class="QDoubleSpinBox" name="spin_start">
-      <property name="keyboardTracking">
-       <bool>false</bool>
-      </property>
-      <property name="minimum">
-       <double>5.000000000000000</double>
-      </property>
-      <property name="maximum">
-       <double>310.000000000000000</double>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="1">
-     <widget class="QDoubleSpinBox" name="spin_rate">
+    <item row="4" column="1">
+     <widget class="QDoubleSpinBox" name="spin_rateh">
       <property name="keyboardTracking">
        <bool>false</bool>
       </property>
@@ -131,29 +176,10 @@
       </property>
      </widget>
     </item>
-    <item row="4" column="1">
-     <widget class="QDoubleSpinBox" name="spin_curr">
-      <property name="keyboardTracking">
-       <bool>false</bool>
-      </property>
-      <property name="decimals">
-       <number>3</number>
-      </property>
-      <property name="minimum">
-       <double>0.001000000000000</double>
-      </property>
-      <property name="maximum">
-       <double>10.000000000000000</double>
-      </property>
-      <property name="value">
-       <double>1.000000000000000</double>
-      </property>
-     </widget>
-    </item>
-    <item row="6" column="0" colspan="2">
-     <widget class="QPushButton" name="start_btn">
+    <item row="4" column="0">
+     <widget class="QLabel" name="label_6">
       <property name="text">
-       <string>Start Measurement</string>
+       <string>Heating Rate (K/min)</string>
       </property>
      </widget>
     </item>
@@ -182,6 +208,17 @@
    </property>
   </action>
  </widget>
+ <tabstops>
+  <tabstop>file_btn</tabstop>
+  <tabstop>spin_start</tabstop>
+  <tabstop>spin_end</tabstop>
+  <tabstop>spin_rate</tabstop>
+  <tabstop>spin_rateh</tabstop>
+  <tabstop>spin_curr</tabstop>
+  <tabstop>spin_delta</tabstop>
+  <tabstop>start_btn</tabstop>
+  <tabstop>file_line</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

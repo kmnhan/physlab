@@ -105,7 +105,8 @@ def measure(
     curr,
     tempstart,
     tempend,
-    temprate,
+    coolrate,
+    heatrate,
     updatesignal=None,
     heatingsignal=None,
     abortflag=None,
@@ -156,8 +157,10 @@ def measure(
         # k = 1 : measure while going to the End Temperature.
         if k == 0:
             target = tempstart
+            temprate = coolrate
         elif k == 1:
             target = tempend
+            temprate = heatrate
             if heatingsignal is not None:
                 heatingsignal.emit()
 
@@ -249,7 +252,8 @@ class MainWindow(*uic.loadUiType("main.ui")):
             curr=self.spin_curr.value() * 1e-3,
             tempstart=self.spin_start.value(),
             tempend=self.spin_end.value(),
-            temprate=self.spin_rate.value(),
+            coolrate=self.spin_rate.value(),
+            heatrate=self.spin_rateh.value(),
         )
 
     @QtCore.Slot()
