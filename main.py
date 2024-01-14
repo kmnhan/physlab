@@ -98,8 +98,17 @@ class WritingProc(multiprocessing.Process):
             content = [content]
         self.queue.put((timestamp, content))
 
+
 def measure(
-    filename, delta, curr, tempstart, tempend, temprate, signal=None, abortflag=None
+    filename,
+    delta,
+    curr,
+    tempstart,
+    tempend,
+    temprate,
+    updatesignal=None,
+    heatingsignal=None,
+    abortflag=None,
 ):
     # Connect to GPIB instruments
     lake = LakeshoreModel325("lake", "GPIB0::12::INSTR")
@@ -149,6 +158,8 @@ def measure(
             target = tempstart
         elif k == 1:
             target = tempend
+            if heatingsignal is not None:
+                heatingsignal.emit()
 
         log.info(f"[Set temperature {target} K ]")
         lake.write(f"RAMP 1,1,{temprate}")
@@ -163,8 +174,8 @@ def measure(
 
             writer.append(now, [str(temperature), resistance, current])
             log.info(f"{now}\t{temperature:14.3f}\t{resistance}\t{current}")
-            if signal is not None:
-                signal.emit(now, (temperature, float(resistance), float(current)))
+            if updatesignal is not None:
+                updatesignal.emit(now, (temperature, float(resistance), float(current)))
             adjust_heater(temperature)
 
             if np.abs(target - temperature) < 0.5:
@@ -193,6 +204,7 @@ class MeasureThread(QtCore.QThread):
     sigStarted = QtCore.Signal()
     sigFinished = QtCore.Signal()
     sigUpdated = QtCore.Signal(object, object)
+    sigHeating = QtCore.Signal()
 
     def __init__(self):
         super().__init__()
@@ -202,7 +214,12 @@ class MeasureThread(QtCore.QThread):
     def run(self):
         self.sigStarted.emit()
         self.aborted.clear()
-        measure(**self.measure_params, signal=self.sigUpdated, abortflag=self.aborted)
+        measure(
+            **self.measure_params,
+            updatesignal=self.sigUpdated,
+            heatingsignal=self.sigHeating,
+            abortflag=self.aborted,
+        )
         self.sigFinished.emit()
 
 
@@ -219,6 +236,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
 
         self.measurement_thread = MeasureThread()
         self.measurement_thread.sigUpdated.connect(self.plot.update_data)
+        self.measurement_thread.sigHeating.connect(self.plot.started_heating)
         self.measurement_thread.sigStarted.connect(self.started)
         self.measurement_thread.sigStarted.connect(self.plot.started)
         self.measurement_thread.sigFinished.connect(self.finished)

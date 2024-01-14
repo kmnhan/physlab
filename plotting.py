@@ -17,35 +17,55 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
 
         self.plot_widget.plotItem.vb.setCursor(QtGui.QCursor(QtCore.Qt.CrossCursor))
 
-        self.curve = self.plot_widget.plot(pen="c")
+        self.curve0 = self.plot_widget.plot(pen="c")
+        self.curve1 = self.plot_widget.plot(pen="m")
         self.start_dt = None
 
         self.line = pg.InfiniteLine(
             angle=90,
             movable=True,
             label="",
-            labelOpts=dict(position=0.75, movable=True, fill=(200, 200, 200, 50)),
+            labelOpts=dict(
+                position=0.75,
+                movable=True,
+                color=(200, 200, 100),
+                fill=(200, 200, 200, 50),
+            ),
         )
+        self.target = pg.TargetItem(size=5)
         self.line.sigPositionChanged.connect(self.cursor_moved)
         self.cursor_check.toggled.connect(self.line.setVisible)
+        self.cursor_check.toggled.connect(self.target.setVisible)
         self.cursor_check.setChecked(False)
         self.plot_widget.addItem(self.line)
+        self.plot_widget.addItem(self.target)
 
         self.reset_data()
         self.update_axes()
 
+    @QtCore.Slot()
     def reset_data(self):
         self._data = [[], [], []]
+        self.about_to_heat = False
+        self.t_heat = None
 
     @QtCore.Slot()
     def started(self):
         self.start_dt = datetime.datetime.now()
         self.reset_data()
 
+    @QtCore.Slot()
+    def started_heating(self):
+        self.about_to_heat = True
+
     @QtCore.Slot(object, object)
     def update_data(self, dt, data):
         sec = (dt - self.start_dt).total_seconds()
         temp, res, _ = data
+
+        if self.about_to_heat:
+            self.about_to_heat = False
+            self.t_heat = sec
 
         self._data[0].append(sec)
         self._data[1].append(temp)
@@ -66,34 +86,46 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
     def update_plot(self):
         if len(self._data[0]) == 0:
             return
-        x, y = self.xdata, self.ydata
-        self.line.setBounds((min(x), max(x)))
-        self.curve.setData(x=x, y=y)
+        x, y = self.xydata
+        self.line.setBounds((min(x.values), max(x.values)))
+        if self.t_heat is None:
+            self.curve0.setData(x=x.values, y=y.values)
+        else:
+            self.curve0.setData(
+                x=x.sel(time=slice(None, self.t_heat)).values,
+                y=y.sel(time=slice(None, self.t_heat)).values,
+            )
+            self.curve1.setData(
+                x=x.sel(time=slice(self.t_heat, None)).values,
+                y=y.sel(time=slice(self.t_heat, None)).values,
+            )
 
     @QtCore.Slot()
     def cursor_moved(self):
-        xdat = np.asarray(self.xdata)
-        x_idx = np.abs(xdat - self.line.value()).argmin()
-        xval, yval = xdat[x_idx], self.ydata[x_idx]
+        x, y = self.xydata
+        if self.combo.currentIndex() == 0 and self.t_heat is not None:
+            x = x.sel(time=slice(self.t_heat, None))
+            y = y.sel(time=slice(self.t_heat, None))
+        x_idx = np.abs(x.values - self.line.value()).argmin()
+        xval, yval = x.values[x_idx], y.values[x_idx]
+
+        self.target.setPos(xval, yval)
         self.line.label.setText(
             f"{self.xlabel} {np.format_float_positional(xval)}\n"
             + f"{self.ylabel} {np.format_float_positional(yval)}"
         )
 
-    @property
-    def data(self):
-        if self.bin_spin.value() == 1:
-            return self._data
-        else:
-            ds = self.dataset
-            return [ds.time.values, ds.temp.values, ds.res.values]
+        self.line.blockSignals(True)
+        self.line.setPos(xval)
+        self.line.blockSignals(False)
 
     @property
     def dataset(self) -> xr.Dataset:
         return (
             xr.Dataset(
                 data_vars=dict(
-                    temp=("time", self._data[1]), res=("time", self._data[2])
+                    temp=("time", self._data[1]),
+                    res=("time", self._data[2]),
                 ),
                 coords=dict(time=self._data[0]),
             )
@@ -102,22 +134,35 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
         )
 
     @property
+    def xydata(self):
+        ds = self.dataset
+        if self.combo.currentIndex() == 0:
+            # R vs T
+            return ds.temp, ds.res
+        elif self.combo.currentIndex() == 1:
+            # R vs t
+            return ds.time, ds.res
+        elif self.combo.currentIndex() == 2:
+            # T vs t
+            return ds.time, ds.temp
+
+    @property
     def xdata(self) -> list[float]:
         if self.combo.currentIndex() == 0:
             # R-T
-            return self.data[1]
+            return self.dataset.temp
         else:
             # R-t or T-t
-            return self.data[0]
+            return self.dataset.time
 
     @property
     def ydata(self) -> list[float]:
         if self.combo.currentIndex() == 2:
             # T-t
-            return self.data[1]
+            return self.dataset.temp
         else:
             # R-T or R-t
-            return self.data[2]
+            return self.dataset.res
 
     @property
     def xlabel(self) -> str:
@@ -145,17 +190,30 @@ if __name__ == "__main__":
 
     import random
 
-    def sampledata():
+    def sampledata(i=None):
+        if i is None:
+            i = 1
         temp = 300 + random.random() - 0.5
-        res = 0.1 * random.random() + 0.1
+        res = 0.5 * random.random() + 0.1
         curr = 1e-3
+
+        temp *= i
+        res *= i
+
         return temp, res, curr
 
     win.started()
 
     # win.update_data(datetime.datetime.now(), sampledata())
-    for i in range(100):
-        win.update_data(datetime.datetime.now(), sampledata())
-        # time.sleep(0.05)
+    import time
+
+    for i in range(10):
+        win.update_data(datetime.datetime.now(), sampledata(i))
+        # time.sleep(0.1)
+
+    win.started_heating()
+    for i in range(10, -1, -1):
+        win.update_data(datetime.datetime.now(), sampledata(i))
+        # time.sleep(0.1)
 
     qapp.exec()
