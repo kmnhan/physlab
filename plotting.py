@@ -133,18 +133,6 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
         else:
             return "Resistance (Ohm)"
 
-    # @property
-    # def ydataaa(self):
-    #     if self.combo.currentIndex() == 0:
-    #         # R vs T
-    #         pass
-    #     elif self.combo.currentIndex() == 1:
-    #         # R vs t
-    #         pass
-    #     elif self.combo.currentIndex() == 2:
-    #         # T vs t
-    #         pass
-
 
 if __name__ == "__main__":
     qapp: QtWidgets.QApplication = QtWidgets.QApplication.instance()

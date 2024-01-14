@@ -1,0 +1,7 @@
+qcodes
+pyvisa
+numpy
+xarray
+pyqtgraph
+pyqt6
+qtpy

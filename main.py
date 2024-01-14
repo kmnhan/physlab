@@ -10,7 +10,7 @@ import time
 import numpy as np
 from qcodes.instrument_drivers.Keithley import Keithley2450
 from qcodes.instrument_drivers.Lakeshore import LakeshoreModel325
-from qtpy import QtCore, QtGui, QtWidgets, uic
+from qtpy import QtCore, QtWidgets, uic
 
 from plotting import PlotWindow
 
@@ -97,74 +97,6 @@ class WritingProc(multiprocessing.Process):
         if isinstance(content, str):
             content = [content]
         self.queue.put((timestamp, content))
-
-
-def measure_debug(
-    filename, delta, curr, tempstart, tempend, temprate, signal=None, abortflag=None
-):
-    # Connect to GPIB instruments
-    lake = LakeshoreModel325("lake", "GPIB0::12::INSTR")
-    keithley = Keithley2450("keithley", "GPIB1::18::INSTR")
-
-    def adjust_heater(temperature):
-        for temprange, params in HEATER_PARAMETERS.items():
-            if temprange[0] < temperature < temprange[1]:
-                lake.heater_1.output_range(params[0])
-                lake.heater_1.P(params[1])
-                lake.heater_1.I(params[2])
-                lake.heater_1.D(params[3])
-                return
-
-    # Keithley 2450 setup
-    # keithley.reset()
-    keithley.write("SENS:FUNC VOLT")
-    keithley.write("SENS:VOLT:RANG:AUTO ON")
-    keithley.write("SENS:VOLT:UNIT OHM")
-    keithley.write("SENS:VOLT:RSEN ON")
-    keithley.write("SENS:VOLT:OCOM ON")
-    keithley.write("SENS:VOLT:NPLC 10")
-
-    keithley.write("SOUR:FUNC CURR")
-    keithley.write("SOUR:CURR:RANG:AUTO ON")
-    keithley.write(f"SOUR:CURR {curr:.15f}")
-    keithley.write("SOUR:CURR:VLIM 10")
-    keithley.write("OUTP ON")
-
-    # LakeShore325 temperature controller
-    lake.write("OUTMODE 1,1,2,1")
-    temperature = lake.sensor_B.temperature()
-
-    # Start data writer
-    writer = WritingProc(filename)
-    writer.start()
-
-    maxiter = 20
-    i = 0
-    while i < maxiter:
-        resistance: str = keithley.ask("MEAS:VOLT?")
-        temperature: float = lake.sensor_B.temperature()
-        current: str = keithley.ask("SOUR:CURR?")
-        now = datetime.datetime.now()
-
-        writer.append(now, [str(temperature), resistance, current])
-        log.info(f"{now}\t{temperature:14.3f}\t{resistance}\t{current}")
-        if signal is not None:
-            signal.emit(now, (temperature, float(resistance), float(current)))
-        adjust_heater(temperature)
-
-        if abortflag is not None:
-            if abortflag.is_set():
-                break
-
-        i += 1
-        time.sleep(delta)
-
-    writer.stop()
-    keithley.write("SOUR:CURR 0")
-    keithley.write("OUTP OFF")
-    keithley.close()
-    lake.close()
-
 
 def measure(
     filename, delta, curr, tempstart, tempend, temprate, signal=None, abortflag=None
@@ -270,10 +202,7 @@ class MeasureThread(QtCore.QThread):
     def run(self):
         self.sigStarted.emit()
         self.aborted.clear()
-        measure_debug(
-            **self.measure_params, signal=self.sigUpdated, abortflag=self.aborted
-        )
-        # measure(**self.measure_params, signal=self.sigUpdated, abortflag=self.aborted)
+        measure(**self.measure_params, signal=self.sigUpdated, abortflag=self.aborted)
         self.sigFinished.emit()
 
 
