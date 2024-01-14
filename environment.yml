@@ -1,0 +1,15 @@
+name: rtdaq
+channels:
+  - conda-forge
+dependencies:
+  - python>=3.10
+  - pip
+  - qcodes
+  - pyvisa
+  - numpy
+  - h5netcdf
+  - xarray
+  - pyqtgraph
+  - qtpy
+  - pip:
+    - pyqt6
