@@ -261,6 +261,11 @@ class MainWindow(*uic.loadUiType("main.ui")):
 
     @QtCore.Slot()
     def start_measurement(self):
+        if self.file_line.text() == "":
+            QtWidgets.QMessageBox.critical(
+                self, "Empty File", "Select a file to start the measurement."
+            )
+            return
         self.measurement_thread.measure_params = self.measurement_parameters
         self.measurement_thread.start()
 
