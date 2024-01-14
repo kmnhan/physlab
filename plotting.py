@@ -102,6 +102,8 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
 
     @QtCore.Slot()
     def cursor_moved(self):
+        if len(self._data[0]) == 0:
+            return
         x, y = self.xydata
         # If R-T plot and heating, make cursor print only current values
         if self.combo.currentIndex() == 0 and self.t_heat is not None:
