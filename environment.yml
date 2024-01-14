@@ -5,7 +5,7 @@ dependencies:
   - python=3.9
   - pip
   - qcodes
-  - pyvisa
+  - pyvisa==1.11.3
   - numpy
   - xarray
   - pyqtgraph

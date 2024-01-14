@@ -1,5 +1,5 @@
 qcodes
-pyvisa
+pyvisa==1.11.3
 numpy
 xarray
 pyqtgraph
