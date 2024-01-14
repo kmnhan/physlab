@@ -20,7 +20,6 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
         self.curve0 = self.plot_widget.plot(pen="c")
         self.curve1 = self.plot_widget.plot(pen="m")
         self.start_dt = None
-
         self.line = pg.InfiniteLine(
             angle=90,
             movable=True,
@@ -40,6 +39,8 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
         self.plot_widget.addItem(self.line)
         self.plot_widget.addItem(self.target)
 
+        self.cooling_check.toggled.connect(self.curve0.setVisible)
+
         self.reset_data()
         self.update_axes()
 
@@ -48,6 +49,8 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
         self._data = [[], [], []]
         self.about_to_heat = False
         self.t_heat = None
+        self.cooling_check.setChecked(True)
+        self.cooling_check.setDisabled(True)
 
     @QtCore.Slot()
     def started(self):
@@ -66,6 +69,7 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
         if self.about_to_heat:
             self.about_to_heat = False
             self.t_heat = sec
+            self.cooling_check.setDisabled(False)
 
         self._data[0].append(sec)
         self._data[1].append(temp)

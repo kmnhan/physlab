@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>548</width>
+    <width>585</width>
     <height>600</height>
    </rect>
   </property>
@@ -68,7 +68,7 @@
            </sizepolicy>
           </property>
           <property name="text">
-           <string>Plot Mode</string>
+           <string>Plot</string>
           </property>
          </widget>
         </item>
@@ -100,7 +100,7 @@
            </sizepolicy>
           </property>
           <property name="text">
-           <string>Time Binning</string>
+           <string>Time Bins</string>
           </property>
          </widget>
         </item>
@@ -126,12 +126,38 @@
         <item>
          <widget class="QCheckBox" name="cursor_check">
           <property name="text">
-           <string>Show Cursor</string>
+           <string>Cursor</string>
           </property>
           <property name="checked">
            <bool>true</bool>
           </property>
          </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="cooling_check">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>Show Cooling</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
         </item>
        </layout>
       </item>
@@ -144,7 +170,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>548</width>
+     <width>585</width>
      <height>21</height>
     </rect>
    </property>
