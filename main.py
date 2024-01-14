@@ -35,7 +35,7 @@ HEATER_PARAMETERS = {
 
 
 class WritingProc(multiprocessing.Process):
-    def __init__(self, filename: str | os.PathLike):
+    def __init__(self, filename: os.PathLike):
         super().__init__()
         self.filename = str(filename)
         self._stopped = multiprocessing.Event()
@@ -93,7 +93,7 @@ class WritingProc(multiprocessing.Process):
         self._stopped.set()
         self.join()
 
-    def append(self, timestamp: datetime.datetime, content: str | list[str]):
+    def append(self, timestamp: datetime.datetime, content):
         if isinstance(content, str):
             content = [content]
         self.queue.put((timestamp, content))
