@@ -164,6 +164,8 @@ def measure(
             temprate = heatrate
             if heatingsignal is not None:
                 heatingsignal.emit()
+            # Additional time between cooling and heating
+            time.sleep(10)
 
         log.info(f"[Set temperature {target} K ]")
         lake.write(f"RAMP 1,1,{temprate}")
