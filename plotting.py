@@ -117,7 +117,7 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
         xval, yval = x.values[x_idx], y.values[x_idx]
 
         self.target.setPos(xval, yval)
-        self.line.label.setText(f"{self.xlabel} {xval:.6g}\n{self.ylabel} {yval:.6g}")
+        self.line.label.setText(f"{self.xlabel} {xval:.5g}\n{self.ylabel} {yval:.5g}")
 
         self.line.blockSignals(True)
         self.line.setPos(xval)

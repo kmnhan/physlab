@@ -368,7 +368,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
     @QtCore.Slot(object, object)
     def updated(self, _, data: tuple[float, float, float]):
         temp, res, _ = data
-        self.statusBar().showMessage(f"T = {temp:.6g} K, R = {res:.6g} Ω")
+        self.statusBar().showMessage(f"T = {temp:.5g} K, R = {res:.5g} Ω")
 
     @QtCore.Slot()
     def finished(self):
