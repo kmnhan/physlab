@@ -20,19 +20,20 @@ except:
     pass
 
 
-log = logging.getLogger(__name__)
-log.setLevel(logging.INFO)
-handler = logging.StreamHandler(sys.stdout)
-handler.setFormatter(logging.Formatter("%(message)s"))
-log.addHandler(handler)
-
-HEATER_PARAMETERS = {
+HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
     (2, 10): ("Low (2.5W)", 30, 40, 40),
     (10, 15): ("High (25W)", 25, 30, 30),
     (15, 100): ("High (25W)", 35, 40, 40),
     (100, 275): ("High (25W)", 40, 40, 40),
     (275, np.inf): ("High (25W)", 40, 60, 40),
-}
+}  #: Heater and PID parameters for each temperature range
+
+
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
+handler = logging.StreamHandler(sys.stdout)
+handler.setFormatter(logging.Formatter("%(message)s"))
+log.addHandler(handler)
 
 
 class WritingProc(multiprocessing.Process):
