@@ -278,7 +278,9 @@ class MainWindow(*uic.loadUiType("main.ui")):
 
         if params["tempstart"] >= params["tempend"]:
             QtWidgets.QMessageBox.critical(
-                self, "Invalid Temperature", f"Low T must be lower than High T."
+                self,
+                "Invalid Temperature",
+                f"Low Temperature must be lower than High Temperature.",
             )
             return
 
