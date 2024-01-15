@@ -271,8 +271,26 @@ class MainWindow(*uic.loadUiType("main.ui")):
                 self, "Empty File", "Select a file before starting the measurement."
             )
             return
-        self.measurement_thread.measure_params = self.measurement_parameters
-        self.measurement_thread.start()
+
+        params = self.measurement_parameters
+        ret = QtWidgets.QMessageBox.question(
+            self,
+            "Confirm Parameters",
+            "\n".join(
+                [
+                    f"Save to {params['filename']}",
+                    f"Low {params['delta']} K",
+                    f"High {params['curr']} K",
+                    f"Cool {params['tempstart']} K/min",
+                    f"Heat {params['tempend']} K/min",
+                    f"Current {params['coolrate']} A",
+                    f"Every {params['heatrate']} s",
+                ]
+            ),
+        )
+        if ret == QtWidgets.QMessageBox.Yes:
+            self.measurement_thread.measure_params = self.measurement_parameters
+            self.measurement_thread.start()
 
     @QtCore.Slot()
     def abort_measurement(self):
