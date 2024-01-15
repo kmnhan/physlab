@@ -1,4 +1,4 @@
-name: rtdaq
+name: rtdaq_ion
 channels:
   - conda-forge
 dependencies:
