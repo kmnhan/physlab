@@ -128,8 +128,7 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
         return (
             xr.Dataset(
                 data_vars=dict(
-                    temp=("time", self._data[1]),
-                    res=("time", self._data[2]),
+                    temp=("time", self._data[1]), res=("time", self._data[2])
                 ),
                 coords=dict(time=self._data[0]),
             )

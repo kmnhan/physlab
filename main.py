@@ -134,7 +134,8 @@ def measure(
     delta
         Interval between each measurement loop in seconds. Note that the real logging
         interval is larger than this value, and depends on the settings of the
-        sourcemeter such as NPLC and count.
+        sourcemeter such as NPLC and count. This is NOT the same as the input value to
+        the GUI interface.
     updatesignal : optional
         Emits the elapsed time and data with each update, by default None
     heatingsignal : optional
