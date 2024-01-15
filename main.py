@@ -102,12 +102,12 @@ class WritingProc(multiprocessing.Process):
 
 def measure(
     filename,
-    delta,
-    curr,
     tempstart,
     tempend,
     coolrate,
     heatrate,
+    curr,
+    delta,
     updatesignal=None,
     heatingsignal=None,
     abortflag=None,
@@ -251,12 +251,12 @@ class MainWindow(*uic.loadUiType("main.ui")):
     def measurement_parameters(self) -> dict:
         return dict(
             filename=self.file_line.text(),
-            delta=self.spin_delta.value(),
-            curr=self.spin_curr.value() * 1e-3,
             tempstart=self.spin_start.value(),
             tempend=self.spin_end.value(),
             coolrate=self.spin_rate.value(),
             heatrate=self.spin_rateh.value(),
+            curr=self.spin_curr.value() * 1e-3,
+            delta=self.spin_delta.value(),
         )
 
     @QtCore.Slot()
@@ -275,18 +275,25 @@ class MainWindow(*uic.loadUiType("main.ui")):
             return
 
         params = self.measurement_parameters
+
+        if params["tempstart"] >= params["tempend"]:
+            QtWidgets.QMessageBox.critical(
+                self, "Invalid Temperature", f"Low T must be lower than High T."
+            )
+            return
+
         ret = QtWidgets.QMessageBox.question(
             self,
             "Confirm Parameters",
             "\n".join(
                 [
                     f"Save to {params['filename']}",
-                    f"Low {params['delta']} K",
-                    f"High {params['curr']} K",
-                    f"Cool {params['tempstart']} K/min",
-                    f"Heat {params['tempend']} K/min",
-                    f"Current {params['coolrate']} A",
-                    f"Every {params['heatrate']} s",
+                    f"Low {params['tempstart']} K",
+                    f"High {params['tempend']} K",
+                    f"Cool {params['coolrate']} K/min",
+                    f"Heat {params['heatrate']} K/min",
+                    f"Current {params['curr']} A",
+                    f"Every {params['delta']} s",
                 ]
             ),
         )
@@ -338,7 +345,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
         dialog.setAcceptMode(QtWidgets.QFileDialog.AcceptMode.AcceptSave)
         dialog.setFileMode(QtWidgets.QFileDialog.FileMode.AnyFile)
         dialog.setNameFilter("Comma-separated values (*.csv)")
-        dialog.setOption(QtWidgets.QFileDialog.Option.DontUseNativeDialog)
+        # dialog.setOption(QtWidgets.QFileDialog.Option.DontUseNativeDialog)
 
         if dialog.exec():
             self.file_line.setText(dialog.selectedFiles()[0])
