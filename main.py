@@ -257,7 +257,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
             coolrate=self.spin_rate.value(),
             heatrate=self.spin_rateh.value(),
             curr=self.spin_curr.value() * 1e-3,
-            delta=self.spin_delta.value(),
+            delta=self.spin_delta.value() - 1.4,
         )
 
     @QtCore.Slot()
@@ -296,7 +296,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
                     f"Cool {params['coolrate']} K/min",
                     f"Heat {params['heatrate']} K/min",
                     f"Current {params['curr']} A",
-                    f"Every {params['delta']} s",
+                    f"Every {params['delta'] + 1.4} s",
                 ]
             ),
         )
