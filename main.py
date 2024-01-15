@@ -132,7 +132,9 @@ def measure(
     curr
         Current in Amperes.
     delta
-        Measurement interval in seconds.
+        Interval between each measurement loop in seconds. Note that the real logging
+        interval is larger than this value, and depends on the settings of the
+        sourcemeter such as NPLC and count.
     updatesignal : optional
         Emits the elapsed time and data with each update, by default None
     heatingsignal : optional
@@ -159,9 +161,9 @@ def measure(
     keithley.write("SENS:FUNC VOLT")
     keithley.write("SENS:VOLT:RANG:AUTO ON")
     keithley.write("SENS:VOLT:UNIT OHM")
-    keithley.write("SENS:VOLT:RSEN ON")
     keithley.write("SENS:VOLT:OCOM ON")
-    keithley.write("SENS:VOLT:NPLC 10")
+    keithley.write("SENS:VOLT:RSEN ON")
+    keithley.write("SENS:VOLT:NPLC 4")
 
     keithley.write("SOUR:FUNC CURR")
     keithley.write("SOUR:CURR:RANG:AUTO ON")
@@ -202,10 +204,19 @@ def measure(
         adjust_heater(300.0)
 
         while True:
-            resistance: str = keithley.ask("MEAS:VOLT?")
+            # In order to compensate for voltage measurement time delay, time and
+            # temperature are measured twice and averaged.
+
             temperature: float = lake.sensor_B.temperature()
-            current: str = keithley.ask("SOUR:CURR?")
+
             now = datetime.datetime.now()
+            resistance: str = keithley.ask("MEAS:VOLT?")
+            now = now + (datetime.datetime.now() - now) / 2
+
+            temperature += lake.sensor_B.temperature()
+            temperature /= 2.0
+
+            current: str = keithley.ask("SOUR:CURR?")
 
             writer.append(now, [str(temperature), resistance, current])
             log.info(f"{now}\t{temperature:14.3f}\t{resistance}\t{current}")
@@ -222,7 +233,7 @@ def measure(
                 if abortflag.is_set():
                     break
 
-            time.sleep(max(delta - 1.4, 0))
+            time.sleep(delta)
 
         if abortflag is not None:
             if abortflag.is_set():
@@ -286,7 +297,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
             coolrate=self.spin_rate.value(),
             heatrate=self.spin_rateh.value(),
             curr=self.spin_curr.value() * 1e-3,
-            delta=self.spin_delta.value(),
+            delta=self.spin_delta.value() - 0.6,  # est. from NPLC settings
         )
 
     @QtCore.Slot()
@@ -325,7 +336,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
                     f"Cool {params['coolrate']} K/min",
                     f"Heat {params['heatrate']} K/min",
                     f"Current {params['curr']} A",
-                    f"Every {params['delta']} s",
+                    f"Every {params['delta'] + 0.6} s",
                 ]
             ),
         )
