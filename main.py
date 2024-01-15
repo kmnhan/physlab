@@ -102,17 +102,45 @@ class WritingProc(multiprocessing.Process):
 
 
 def measure(
-    filename,
-    tempstart,
-    tempend,
-    coolrate,
-    heatrate,
-    curr,
-    delta,
-    updatesignal=None,
-    heatingsignal=None,
-    abortflag=None,
+    filename: os.PathLike,
+    tempstart: float,
+    tempend: float,
+    coolrate: float,
+    heatrate: float,
+    curr: float,
+    delta: float,
+    updatesignal: QtCore.SignalInstance | None = None,
+    heatingsignal: QtCore.SignalInstance | None = None,
+    abortflag: threading.Event | None = None,
 ):
+    """Measure function
+
+    All optional arguments are for GUI integration.
+
+    Parameters
+    ----------
+    filename
+        Name of .csv file.
+    tempstart
+        Low temperature in Kelvins.
+    tempend
+        High temperature in Kelvins.
+    coolrate
+        Cooling rate in Kelvins per minute
+    heatrate
+        Heating rate in Kelvins per minute.
+    curr
+        Current in Amperes.
+    delta
+        Measurement interval in seconds.
+    updatesignal : optional
+        Emits the elapsed time and data with each update, by default None
+    heatingsignal : optional
+        Emitted on starting ramp to `tempend`, by default None
+    abortflag : optional
+        The loop is aborted when this event is set, by default None
+
+    """
     # Connect to GPIB instruments
     lake = LakeshoreModel325("lake", "GPIB0::12::INSTR")
     keithley = Keithley2450("keithley", "GPIB1::18::INSTR")
