@@ -21,7 +21,7 @@
        <bool>false</bool>
       </property>
       <property name="minimum">
-       <double>5.000000000000000</double>
+       <double>4.000000000000000</double>
       </property>
       <property name="maximum">
        <double>310.000000000000000</double>
