@@ -270,10 +270,11 @@ class MainWindow(*uic.loadUiType("main.ui")):
         self.actionplot.triggered.connect(self.toggle_plot)
 
         self.measurement_thread = MeasureThread()
-        self.measurement_thread.sigUpdated.connect(self.plot.update_data)
-        self.measurement_thread.sigHeating.connect(self.plot.started_heating)
         self.measurement_thread.sigStarted.connect(self.started)
         self.measurement_thread.sigStarted.connect(self.plot.started)
+        self.measurement_thread.sigHeating.connect(self.plot.started_heating)
+        self.measurement_thread.sigUpdated.connect(self.plot.update_data)
+        self.measurement_thread.sigUpdated.connect(self.updated)
         self.measurement_thread.sigFinished.connect(self.finished)
 
     @property
@@ -346,9 +347,16 @@ class MainWindow(*uic.loadUiType("main.ui")):
             self.spin_start,
             self.spin_end,
             self.spin_rate,
+            self.spin_rateh,
         ):
             w.setDisabled(True)
         self.start_btn.setText("Abort Measurement")
+        self.statusBar().setVisible(True)
+
+    @QtCore.Slot(object, object)
+    def updated(self, _, data: tuple[float, float, float]):
+        temp, res, _ = data
+        self.statusBar().showMessage(f"T = {temp:.6g} K, R = {res:.6g} Ω")
 
     @QtCore.Slot()
     def finished(self):
@@ -359,9 +367,11 @@ class MainWindow(*uic.loadUiType("main.ui")):
             self.spin_start,
             self.spin_end,
             self.spin_rate,
+            self.spin_rateh,
         ):
             w.setDisabled(False)
         self.start_btn.setText("Start Measurement")
+        self.statusBar().setVisible(False)
 
     @QtCore.Slot()
     def toggle_plot(self):
