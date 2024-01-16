@@ -134,7 +134,8 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
                 ),
                 coords=dict(time=self._data[0]),
             )
-            .coarsen(time=self.bin_spin.value(), boundary="trim")
+            # .coarsen(time=self.bin_spin.value(), boundary="trim")
+            .rolling(time=self.bin_spin.value(), center=True)
             .mean()
         )
 
