@@ -51,6 +51,8 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
         self.t_heat = None
         self.cooling_check.setChecked(True)
         self.cooling_check.setDisabled(True)
+        self.curve0.setData(x=None, y=None)
+        self.curve1.setData(x=None, y=None)
 
     @QtCore.Slot()
     def started(self):
