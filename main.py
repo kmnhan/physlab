@@ -163,11 +163,12 @@ def measure(
     keithley.write("SENS:FUNC VOLT")
     keithley.write("SENS:VOLT:RANG:AUTO ON")
     keithley.write("SENS:VOLT:UNIT OHM")
-    keithley.write("SENS:VOLT:OCOM ON")
     keithley.write("SENS:VOLT:RSEN ON")
     if reversal:
+        keithley.write("SENS:VOLT:OCOM OFF")
         keithley.write("SENS:VOLT:NPLC 1.75")
     else:
+        keithley.write("SENS:VOLT:OCOM ON")
         keithley.write("SENS:VOLT:NPLC 4")
 
     keithley.write("SOUR:FUNC CURR")
