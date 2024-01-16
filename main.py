@@ -109,6 +109,7 @@ def measure(
     heatrate: float,
     curr: float,
     delta: float,
+    reversal: bool = False,
     updatesignal: QtCore.SignalInstance | None = None,
     heatingsignal: QtCore.SignalInstance | None = None,
     abortflag: threading.Event | None = None,
@@ -164,7 +165,10 @@ def measure(
     keithley.write("SENS:VOLT:UNIT OHM")
     keithley.write("SENS:VOLT:OCOM ON")
     keithley.write("SENS:VOLT:RSEN ON")
-    keithley.write("SENS:VOLT:NPLC 4")
+    if reversal:
+        keithley.write("SENS:VOLT:NPLC 1.75")
+    else:
+        keithley.write("SENS:VOLT:NPLC 4")
 
     keithley.write("SOUR:FUNC CURR")
     keithley.write("SOUR:CURR:RANG:AUTO ON")
@@ -209,13 +213,22 @@ def measure(
             # temperature are measured twice and averaged.
 
             temperature: float = lake.sensor_B.temperature()
+            temperature += lake.sensor_B.temperature()
 
             now = datetime.datetime.now()
-            resistance: str = keithley.ask("MEAS:VOLT?")
+            if reversal:
+                keithley.write(f"SOUR:CURR {curr:.15f}")
+                rp = float(keithley.ask("MEAS:VOLT?"))
+                keithley.write(f"SOUR:CURR {-curr:.15f}")
+                rm = float(keithley.ask("MEAS:VOLT?"))
+                resistance = str((rp - rm) / 2)
+            else:
+                resistance: str = keithley.ask("MEAS:VOLT?")
             now = now + (datetime.datetime.now() - now) / 2
 
             temperature += lake.sensor_B.temperature()
-            temperature /= 2.0
+            temperature += lake.sensor_B.temperature()
+            temperature /= 4.0
 
             current: str = keithley.ask("SOUR:CURR?")
 
@@ -299,6 +312,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
             heatrate=self.spin_rateh.value(),
             curr=self.spin_curr.value() * 1e-3,
             delta=self.spin_delta.value() - 0.6,  # est. from NPLC settings
+            reversal=self.reversal_check.isChecked(),
         )
 
     @QtCore.Slot()
