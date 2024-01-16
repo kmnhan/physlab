@@ -221,7 +221,7 @@ def measure(
                 rp = float(keithley.ask("MEAS:VOLT?"))
                 keithley.write(f"SOUR:CURR {-curr:.15f}")
                 rm = float(keithley.ask("MEAS:VOLT?"))
-                resistance = str((rp - rm) / 2)
+                resistance = str((rp + rm) / 2)
             else:
                 resistance: str = keithley.ask("MEAS:VOLT?")
             now = now + (datetime.datetime.now() - now) / 2
