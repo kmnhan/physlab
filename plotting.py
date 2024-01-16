@@ -34,8 +34,7 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
         )
         self.target = pg.TargetItem(size=5)
         self.line.sigPositionChanged.connect(self.cursor_moved)
-        self.cursor_check.toggled.connect(self.line.setVisible)
-        self.cursor_check.toggled.connect(self.target.setVisible)
+        self.cursor_check.toggled.connect(self.toggle_cursor)
         self.cursor_check.setChecked(False)
         self.plot_widget.addItem(self.line)
         self.plot_widget.addItem(self.target)
@@ -63,6 +62,15 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
     @QtCore.Slot()
     def started_heating(self):
         self.about_to_heat = True
+
+    @QtCore.Slot()
+    def toggle_cursor(self):
+        self.line.setVisible(self.cursor_check.isChecked())
+        self.target.setVisible(self.cursor_check.isChecked())
+
+        if self.cursor_check.isChecked():
+            xmin, xmax = self.plot_widget.plotItem.viewRange()[0]
+            self.line.setValue((xmin + xmax) / 2)
 
     @QtCore.Slot(object, object)
     def update_data(self, dt, data):
