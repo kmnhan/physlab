@@ -14,6 +14,7 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
         self.setWindowTitle("R-T Measurement Plot")
         self.combo.currentIndexChanged.connect(self.update_axes)
         self.bin_spin.valueChanged.connect(self.update_plot)
+        self.avg_spin.valueChanged.connect(self.update_plot)
 
         self.plot_widget.plotItem.vb.setCursor(QtGui.QCursor(QtCore.Qt.CrossCursor))
 
@@ -78,6 +79,7 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
         self._data[2].append(res)
 
         self.bin_spin.setMaximum(len(self._data[0]))
+        self.avg_spin.setMaximum(len(self._data[0]))
 
         self.update_plot()
 
@@ -134,8 +136,9 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
                 ),
                 coords=dict(time=self._data[0]),
             )
-            # .coarsen(time=self.bin_spin.value(), boundary="trim")
-            .rolling(time=self.bin_spin.value(), center=True)
+            .rolling(time=self.avg_spin.value(), center=True)
+            .mean()
+            .coarsen(time=self.bin_spin.value(), boundary="pad")
             .mean()
         )
 
@@ -213,12 +216,12 @@ if __name__ == "__main__":
     # win.update_data(datetime.datetime.now(), sampledata())
     import time
 
-    for i in range(10):
+    for i in range(100):
         win.update_data(datetime.datetime.now(), sampledata(i))
         # time.sleep(0.1)
 
     win.started_heating()
-    for i in range(10, -1, -1):
+    for i in range(100, -1, -1):
         win.update_data(datetime.datetime.now(), sampledata(i))
         # time.sleep(0.1)
 
