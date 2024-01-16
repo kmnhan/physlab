@@ -19,6 +19,6 @@ Most of the measurement process follows the original C++ program. However, there
 
 * Data are now saved as a `.csv` file.
 * Selecting an existing `.csv` file from previous measurements will not overwrite its contents. New data is appended after the last row.
-* Due to the delay (~ 1.4 s) of the SourceMeter output, the measuring interval parameter did not reflect true measurement intervals. Now, it has changed to reflect the true  For ins
+* Due to the delay (dependent on NPLC, counts, etc.) of the SourceMeter output, the measuring interval parameter did not reflect true measurement intervals. Now, it has changed to reflect the true delay. To reduce the minimum delay time to 0.6 s, the NPLC has been reduced from 10 to 4. Larger binning will be required during postprocessing.
 * Time averaging functionality is removed.
 * Some PID parameters have been adjusted.
