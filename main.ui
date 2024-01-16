@@ -21,10 +21,10 @@
        <bool>false</bool>
       </property>
       <property name="minimum">
-       <double>5.000000000000000</double>
+       <double>2.000000000000000</double>
       </property>
       <property name="maximum">
-       <double>350.000000000000000</double>
+       <double>330.000000000000000</double>
       </property>
       <property name="value">
        <double>300.000000000000000</double>
@@ -63,10 +63,10 @@
        <bool>false</bool>
       </property>
       <property name="minimum">
-       <double>4.000000000000000</double>
+       <double>2.000000000000000</double>
       </property>
       <property name="maximum">
-       <double>310.000000000000000</double>
+       <double>330.000000000000000</double>
       </property>
       <property name="value">
        <double>4.000000000000000</double>
@@ -188,6 +188,9 @@
     </item>
     <item row="7" column="0" colspan="2">
      <widget class="QCheckBox" name="reversal_check">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
       <property name="text">
        <string>Current Reversal</string>
       </property>
