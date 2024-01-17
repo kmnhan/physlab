@@ -163,7 +163,6 @@ def measure(
     keithley.write("SENS:FUNC VOLT")
     keithley.write("SENS:VOLT:RANG:AUTO ON")
     keithley.write("SENS:VOLT:UNIT OHM")
-    keithley.write("SENS:VOLT:RSEN ON")
     if reversal:
         keithley.write("SENS:VOLT:OCOM OFF")
         keithley.write("SENS:VOLT:NPLC 1.75")
@@ -175,6 +174,8 @@ def measure(
     keithley.write("SOUR:CURR:RANG:AUTO ON")
     keithley.write(f"SOUR:CURR {curr:.15f}")
     keithley.write("SOUR:CURR:VLIM 10")
+
+    keithley.write("SENS:VOLT:RSEN ON")
     keithley.write("OUTP ON")
 
     # LakeShore325 temperature controller
@@ -218,12 +219,11 @@ def measure(
 
             now = datetime.datetime.now()
             if reversal:
-                keithley.write(f"SOUR:CURR {curr:.15f}")
-                rp = float(keithley.ask("MEAS:VOLT?"))
                 keithley.write(f"SOUR:CURR {-curr:.15f}")
                 rm = float(keithley.ask("MEAS:VOLT?"))
-                print(rp, rm)
-                resistance = str((rp - rm) / 2)
+                keithley.write(f"SOUR:CURR {curr:.15f}")
+                rp = float(keithley.ask("MEAS:VOLT?"))
+                resistance = str((abs(rp) + abs(rm)) / 2)
             else:
                 resistance: str = keithley.ask("MEAS:VOLT?")
             now = now + (datetime.datetime.now() - now) / 2
