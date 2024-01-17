@@ -103,7 +103,7 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
         if len(self._data[0]) == 0:
             return
         x, y = self.xydata
-        self.line.setBounds((min(x.values), max(x.values)))
+        self.line.setBounds((np.nanmin(x.values), np.nanmax(x.values)))
         if self.t_heat is None:
             self.curve0.setData(x=x.values, y=y.values)
         else:
@@ -152,7 +152,7 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
 
     @property
     def xydata(self):
-        ds = self.dataset
+        ds = self.dataset.dropna("time")
         if self.combo.currentIndex() == 0:
             # R vs T
             return ds.temp, ds.res
@@ -224,12 +224,12 @@ if __name__ == "__main__":
     # win.update_data(datetime.datetime.now(), sampledata())
     import time
 
-    for i in range(100):
+    for i in range(10):
         win.update_data(datetime.datetime.now(), sampledata(i))
         # time.sleep(0.1)
 
     win.started_heating()
-    for i in range(100, -1, -1):
+    for i in range(1000, -1, -1):
         win.update_data(datetime.datetime.now(), sampledata(i))
         # time.sleep(0.1)
 
