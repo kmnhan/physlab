@@ -33,7 +33,7 @@ HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
     (17, 30): ("High (25W)", 35, 40, 40),
     (30, 75): ("High (25W)", 35, 40, 40),
     (75, 275): ("High (25W)", 40, 40, 40),
-    (275, np.inf): ("High (25W)", 40, 60, 40),
+    (275, np.inf): ("High (25W)", 40, 70, 40),
 }  #: Heater and PID parameters for each temperature range
 
 
