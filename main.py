@@ -20,11 +20,19 @@ except:
     pass
 
 
+# HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
+#     (2, 10): ("Low (2.5W)", 30, 40, 40),
+#     (10, 15): ("High (25W)", 25, 30, 30),
+#     (15, 100): ("High (25W)", 35, 40, 40),
+#     (100, 275): ("High (25W)", 40, 40, 40),
+#     (275, np.inf): ("High (25W)", 40, 60, 40),
+# }  #: Heater and PID parameters for each temperature range
 HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
-    (2, 10): ("Low (2.5W)", 30, 40, 40),
-    (10, 15): ("High (25W)", 25, 30, 30),
-    (15, 100): ("High (25W)", 35, 40, 40),
-    (100, 275): ("High (25W)", 40, 40, 40),
+    (2, 9): ("Low (2.5W)", 100, 40, 40),
+    (9, 17): ("Low (2.5W)", 70, 35, 30),
+    (17, 30): ("High (25W)", 35, 40, 40),
+    (30, 75): ("High (25W)", 35, 40, 40),
+    (75, 275): ("High (25W)", 40, 40, 40),
     (275, np.inf): ("High (25W)", 40, 60, 40),
 }  #: Heater and PID parameters for each temperature range
 
