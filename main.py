@@ -109,7 +109,7 @@ def measure(
     heatrate: float,
     curr: float,
     delta: float,
-    reversal: bool = False,
+    mode: int,
     updatesignal: QtCore.SignalInstance | None = None,
     heatingsignal: QtCore.SignalInstance | None = None,
     abortflag: threading.Event | None = None,
@@ -137,6 +137,9 @@ def measure(
         interval is larger than this value, and depends on the settings of the
         sourcemeter such as NPLC and count. This is NOT the same as the input value to
         the GUI interface.
+    mode
+        One of 0, 1, 2, each corresponding to the offset-compensated ohms method,
+        current reversal method, and the delta method.
     updatesignal : optional
         Emits the elapsed time and data with each update, by default None
     heatingsignal : optional
@@ -163,12 +166,15 @@ def measure(
     keithley.write("SENS:FUNC VOLT")
     keithley.write("SENS:VOLT:RANG:AUTO ON")
     keithley.write("SENS:VOLT:UNIT OHM")
-    if reversal:
-        keithley.write("SENS:VOLT:OCOM OFF")
-        keithley.write("SENS:VOLT:NPLC 1.75")
-    else:
+    if mode == 0:  # offset-compensated ohms method
         keithley.write("SENS:VOLT:OCOM ON")
         keithley.write("SENS:VOLT:NPLC 4")
+    elif mode == 1:  # current-reversal method
+        keithley.write("SENS:VOLT:OCOM OFF")
+        keithley.write("SENS:VOLT:NPLC 1.5")
+    elif mode == 2:  # delta method
+        keithley.write("SENS:VOLT:OCOM OFF")
+        keithley.write("SENS:VOLT:NPLC 1.5")
 
     keithley.write("SOUR:FUNC CURR")
     keithley.write("SOUR:CURR:RANG:AUTO ON")
@@ -212,20 +218,30 @@ def measure(
 
         while True:
             # In order to compensate for voltage measurement time delay, time and
-            # temperature are measured twice and averaged.
+            # temperature are measured four times and averaged.
 
             temperature: float = lake.sensor_B.temperature()
             temperature += lake.sensor_B.temperature()
 
             now = datetime.datetime.now()
-            if reversal:
+            if mode == 0:  # offset-compensated ohms method
+                resistance: str = keithley.ask("MEAS:VOLT?")
+            elif mode == 1:  # current-reversal method
                 keithley.write(f"SOUR:CURR {-curr:.15f}")
                 rm = float(keithley.ask("MEAS:VOLT?"))
                 keithley.write(f"SOUR:CURR {curr:.15f}")
                 rp = float(keithley.ask("MEAS:VOLT?"))
-                resistance = str((abs(rp) + abs(rm)) / 2)
-            else:
-                resistance: str = keithley.ask("MEAS:VOLT?")
+                resistance = str(abs(rp - rm) / 2)
+            elif mode == 2:  # delta method
+                sgn = np.sign(float(keithley.ask("SOUR:CURR?")))
+                keithley.write(f"SOUR:CURR {-sgn * curr:.15f}")
+                r1 = float(keithley.ask("MEAS:VOLT?"))
+                keithley.write(f"SOUR:CURR {sgn * curr:.15f}")
+                r2 = float(keithley.ask("MEAS:VOLT?"))
+                keithley.write(f"SOUR:CURR {-sgn * curr:.15f}")
+                r3 = float(keithley.ask("MEAS:VOLT?"))
+                ra, rb = (r1 - r2) / 2, (r3 - r2) / 2
+                resistance = str(abs(ra - rb) / 2)
             now = now + (datetime.datetime.now() - now) / 2
 
             temperature += lake.sensor_B.temperature()
@@ -313,8 +329,8 @@ class MainWindow(*uic.loadUiType("main.ui")):
             coolrate=self.spin_rate.value(),
             heatrate=self.spin_rateh.value(),
             curr=self.spin_curr.value() * 1e-3,
-            delta=self.spin_delta.value() - 0.6,  # est. from NPLC settings
-            reversal=self.reversal_check.isChecked(),
+            delta=self.spin_delta.value(),  # est. from NPLC settings
+            mode=self.mode_combo.currentIndex(),
         )
 
     @QtCore.Slot()
@@ -353,7 +369,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
                     f"Cool {params['coolrate']} K/min",
                     f"Heat {params['heatrate']} K/min",
                     f"Current {params['curr']} A",
-                    f"Every {params['delta'] + 0.6} s",
+                    f"Every {params['delta']} s",
                 ]
             ),
         )
