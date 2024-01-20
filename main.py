@@ -178,7 +178,7 @@ def measure(
         keithley.write("SENS:VOLT:OCOM ON")
         keithley.write("SENS:VOLT:NPLC 4")
     elif mode == 1:  # current-reversal method
-        keithley.write("SENS:VOLT:OCOM OFF")
+        keithley.write("SENS:VOLT:OCOM ON")
         keithley.write("SENS:VOLT:NPLC 1.5")
     elif mode == 2:  # delta method
         keithley.write("SENS:VOLT:OCOM OFF")
