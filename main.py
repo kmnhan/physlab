@@ -172,8 +172,8 @@ def measure(
     # Keithley 2450 setup
     # keithley.reset()
     keithley.write("SENS:FUNC VOLT")
-    keithley.write("SENS:VOLT:RANG:AUTO ON")
     keithley.write("SENS:VOLT:UNIT OHM")
+    keithley.write("SENS:VOLT:RANG:AUTO ON")
     if mode == 0:  # offset-compensated ohms method
         keithley.write("SENS:VOLT:OCOM ON")
         keithley.write("SENS:VOLT:NPLC 4")
@@ -186,11 +186,10 @@ def measure(
 
     keithley.write("SOUR:FUNC CURR")
     keithley.write("SOUR:CURR:RANG:AUTO ON")
-    keithley.write(f"SOUR:CURR {curr:.15f}")
     keithley.write("SOUR:CURR:VLIM 10")
+    keithley.write(f"SOUR:CURR {curr:.15f}")
 
     keithley.write("SENS:VOLT:RSEN ON")
-    keithley.write("OUTP ON")
 
     # LakeShore325 temperature controller
     lake.write("OUTMODE 1,1,2,1")
@@ -232,10 +231,11 @@ def measure(
             temperature += lake.sensor_B.temperature()
 
             now = datetime.datetime.now()
+            keithley.write("OUTP ON")
             if mode == 0:  # offset-compensated ohms method
                 resistance: str = keithley.ask("MEAS:VOLT?")
             elif mode == 1:  # current-reversal method
-                keithley.write(f"SOUR:CURR {-curr:.15f}")
+                keithley.write(f"SOUR:CURR -{curr:.15f}")
                 rm = float(keithley.ask("MEAS:VOLT?"))
                 keithley.write(f"SOUR:CURR {curr:.15f}")
                 rp = float(keithley.ask("MEAS:VOLT?"))
@@ -250,6 +250,7 @@ def measure(
                 r3 = float(keithley.ask("MEAS:VOLT?"))
                 ra, rb = (r1 - r2) / 2, (r3 - r2) / 2
                 resistance = str(abs(ra - rb) / 2)
+            keithley.write("OUTP OFF")
             now = now + (datetime.datetime.now() - now) / 2
 
             temperature += lake.sensor_B.temperature()
@@ -281,7 +282,6 @@ def measure(
 
     writer.stop()
     keithley.write("SOUR:CURR 0")
-    keithley.write("OUTP OFF")
     keithley.close()
     lake.close()
 
