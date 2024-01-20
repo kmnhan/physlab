@@ -239,7 +239,7 @@ def measure(
                 rm = float(keithley.ask("MEAS:VOLT?"))
                 keithley.write(f"SOUR:CURR {curr:.15f}")
                 rp = float(keithley.ask("MEAS:VOLT?"))
-                resistance = str(abs(rp - rm) / 2)
+                resistance = str((abs(rp) + abs(rm)) / 2)
             elif mode == 2:  # delta method
                 sgn = np.sign(float(keithley.ask("SOUR:CURR?")))
                 keithley.write(f"SOUR:CURR {-sgn * curr:.15f}")
