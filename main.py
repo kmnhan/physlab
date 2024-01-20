@@ -178,7 +178,7 @@ def measure(
         keithley.write("SENS:VOLT:OCOM ON")
         keithley.write("SENS:VOLT:NPLC 4")
     elif mode == 1:  # current-reversal method
-        keithley.write("SENS:VOLT:OCOM OFF")
+        keithley.write("SENS:VOLT:OCOM ON")
         keithley.write("SENS:VOLT:NPLC 1.5")
     elif mode == 2:  # delta method
         keithley.write("SENS:VOLT:OCOM OFF")
@@ -235,11 +235,11 @@ def measure(
             if mode == 0:  # offset-compensated ohms method
                 resistance: str = keithley.ask("MEAS:VOLT?")
             elif mode == 1:  # current-reversal method
+                rp = float(keithley.ask("MEAS:VOLT?"))
                 keithley.write(f"SOUR:CURR -{curr:.15f}")
                 rm = float(keithley.ask("MEAS:VOLT?"))
-                keithley.write(f"SOUR:CURR {curr:.15f}")
-                rp = float(keithley.ask("MEAS:VOLT?"))
                 resistance = str((abs(rp) + abs(rm)) / 2)
+                keithley.write(f"SOUR:CURR {curr:.15f}")
             elif mode == 2:  # delta method
                 sgn = np.sign(float(keithley.ask("SOUR:CURR?")))
                 keithley.write(f"SOUR:CURR {-sgn * curr:.15f}")
