@@ -1,0 +1,67 @@
+[project]
+name = "physlab"
+version = "0.0.1"
+authors = [{ name = "Kimoon Han", email = "khan@kaist.ac.kr" }]
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 88
+indent-width = 4
+
+[tool.ruff.lint]
+select = [
+    "F",
+    "E4",
+    "E7",
+    "E9",
+    "W",
+    "I",
+    "D",
+    "UP",
+    "B",
+    "C4",
+    "FA",
+    "ICN",
+    "PIE",
+    "PT",
+    "Q",
+    "RSE",
+    "TID",
+    "TCH",
+    "INT",
+    # "ARG",
+    # "PTH",
+    # "FIX",
+    "TRY",
+    "FLY",
+    "NPY",
+    "PERF",
+    # "FURB",
+    "RUF",
+]
+ignore = [
+    "F401",   # Unused import
+    "E402",   # Module level import not at top of file
+    "ICN001", # Import conventions
+    "TRY003", # Long exception messages
+    "D100",   # Missing docstring in public module
+    "D101",   # Missing docstring in public class
+    "D102",   # Missing docstring in public method
+    "D103",   # Missing docstring in public function
+    "D104",   # Missing docstring in public package
+    "D105",   # Missing docstring in magic method
+    "RUF012", # Mutable class attributes should be annotated with `typing.ClassVar`
+]
+extend-select = []
+# allowed-confusables = ["−", "γ"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
+docstring-code-line-length = "dynamic"

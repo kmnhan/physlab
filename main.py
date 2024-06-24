@@ -16,7 +16,7 @@ from plotting import PlotWindow
 
 try:
     os.chdir(sys._MEIPASS)
-except:
+except:  # noqa: E722
     pass
 
 
@@ -28,7 +28,7 @@ except:
 #     (275, np.inf): ("High (25W)", 40, 60, 40),
 # }  #: Heater and PID parameters for each temperature range
 HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
-    (2, 9): ("Low (2.5W)", 100, 40, 40),
+    (0.0, 9): ("Low (2.5W)", 100, 40, 40),
     (9, 17): ("Low (2.5W)", 70, 35, 30),
     (17, 30): ("High (25W)", 35, 40, 40),
     (30, 75): ("High (25W)", 35, 40, 40),
@@ -81,7 +81,7 @@ class WritingProc(multiprocessing.Process):
                 with open(self.filename, "a", newline="") as f:
                     writer = csv.writer(f)
                     elapsed = (dt - self.start_datetime).total_seconds()
-                    writer.writerow([dt.isoformat(), f"{elapsed:.3f}"] + msg)
+                    writer.writerow([dt.isoformat(), f"{elapsed:.3f}", *msg])
             except PermissionError:
                 # put back the retrieved message in the queue
                 n_left = int(self.queue.qsize())
@@ -122,9 +122,10 @@ def measure(
     heatingsignal: QtCore.SignalInstance | None = None,
     abortflag: threading.Event | None = None,
 ):
-    """Measure function
+    """Loop for the R-T measurement.
 
-    All optional arguments are for GUI integration.
+    Optional arguments are for GUI integration. If not provided, it is possible to run
+    the function without a GUI.
 
     Parameters
     ----------
@@ -157,8 +158,8 @@ def measure(
 
     """
     # Connect to GPIB instruments
-    lake = LakeshoreModel325("lake", "GPIB0::12::INSTR")
-    keithley = Keithley2450("keithley", "GPIB1::18::INSTR")
+    lake: LakeshoreModel325 = LakeshoreModel325("lake", "GPIB0::12::INSTR")
+    keithley: Keithley2450 = Keithley2450("keithley", "GPIB1::18::INSTR")
 
     def adjust_heater(temperature):
         for temprange, params in HEATER_PARAMETERS.items():
@@ -228,34 +229,47 @@ def measure(
             # temperature are measured four times and averaged.
 
             temperature: float = lake.sensor_B.temperature()
-            temperature += lake.sensor_B.temperature()
 
             now = datetime.datetime.now()
             keithley.write("OUTP ON")
             if mode == 0:  # offset-compensated ohms method
                 resistance: str = keithley.ask("MEAS:VOLT?")
+
             elif mode == 1:  # current-reversal method
+                keithley.wait()
                 rp = float(keithley.ask("MEAS:VOLT?"))
+
                 keithley.write(f"SOUR:CURR -{curr:.15f}")
+                keithley.wait()
                 rm = float(keithley.ask("MEAS:VOLT?"))
-                resistance = str((abs(rp) + abs(rm)) / 2)
+
                 keithley.write(f"SOUR:CURR {curr:.15f}")
+
+                resistance = str((abs(rp) + abs(rm)) / 2)
+
             elif mode == 2:  # delta method
                 sgn = np.sign(float(keithley.ask("SOUR:CURR?")))
+
                 keithley.write(f"SOUR:CURR {-sgn * curr:.15f}")
+                keithley.wait()
                 r1 = float(keithley.ask("MEAS:VOLT?"))
+
                 keithley.write(f"SOUR:CURR {sgn * curr:.15f}")
+                keithley.wait()
                 r2 = float(keithley.ask("MEAS:VOLT?"))
+
                 keithley.write(f"SOUR:CURR {-sgn * curr:.15f}")
+                keithley.wait()
                 r3 = float(keithley.ask("MEAS:VOLT?"))
+
                 ra, rb = (r1 - r2) / 2, (r3 - r2) / 2
                 resistance = str(abs(ra - rb) / 2)
+
             keithley.write("OUTP OFF")
             now = now + (datetime.datetime.now() - now) / 2
 
             temperature += lake.sensor_B.temperature()
-            temperature += lake.sensor_B.temperature()
-            temperature /= 4.0
+            temperature /= 2.0
 
             current: str = keithley.ask("SOUR:CURR?")
 
@@ -330,16 +344,16 @@ class MainWindow(*uic.loadUiType("main.ui")):
 
     @property
     def measurement_parameters(self) -> dict:
-        return dict(
-            filename=self.file_line.text(),
-            tempstart=self.spin_start.value(),
-            tempend=self.spin_end.value(),
-            coolrate=self.spin_rate.value(),
-            heatrate=self.spin_rateh.value(),
-            curr=self.spin_curr.value() * 1e-3,
-            delta=self.spin_delta.value(),  # est. from NPLC settings
-            mode=self.mode_combo.currentIndex(),
-        )
+        return {
+            "filename": self.file_line.text(),
+            "tempstart": self.spin_start.value(),
+            "tempend": self.spin_end.value(),
+            "coolrate": self.spin_rate.value(),
+            "heatrate": self.spin_rateh.value(),
+            "curr": self.spin_curr.value() * 1e-3,
+            "delta": self.spin_delta.value(),  # est. from NPLC settings
+            "mode": self.mode_combo.currentIndex(),
+        }
 
     @QtCore.Slot()
     def toggle_measurement(self):
@@ -362,7 +376,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
             QtWidgets.QMessageBox.critical(
                 self,
                 "Invalid Temperature",
-                f"Low Temperature must be lower than High Temperature.",
+                "Low Temperature must be lower than High Temperature.",
             )
             return
 
@@ -455,6 +469,7 @@ if __name__ == "__main__":
     qapp: QtWidgets.QApplication = QtWidgets.QApplication.instance()
     if not qapp:
         qapp = QtWidgets.QApplication(sys.argv)
+    qapp.setStyle("Fusion")
 
     win = MainWindow()
     win.show()

@@ -25,12 +25,12 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
             angle=90,
             movable=True,
             label="",
-            labelOpts=dict(
-                position=0.75,
-                movable=True,
-                color=(200, 200, 100),
-                fill=(200, 200, 200, 50),
-            ),
+            labelOpts={
+                "position": 0.75,
+                "movable": True,
+                "color": (200, 200, 100),
+                "fill": (200, 200, 200, 50),
+            },
         )
         self.target = pg.TargetItem(size=5)
         self.line.sigPositionChanged.connect(self.cursor_moved)
@@ -139,10 +139,11 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
     def dataset(self) -> xr.Dataset:
         return (
             xr.Dataset(
-                data_vars=dict(
-                    temp=("time", self._data[1]), res=("time", self._data[2])
-                ),
-                coords=dict(time=self._data[0]),
+                data_vars={
+                    "temp": ("time", self._data[1]),
+                    "res": ("time", self._data[2]),
+                },
+                coords={"time": self._data[0]},
             )
             .rolling(time=self.avg_spin.value(), center=True)
             .mean()
@@ -200,6 +201,7 @@ if __name__ == "__main__":
     qapp: QtWidgets.QApplication = QtWidgets.QApplication.instance()
     if not qapp:
         qapp = QtWidgets.QApplication(sys.argv)
+    qapp.setStyle("Fusion")
 
     win = PlotWindow()
     win.show()
@@ -222,7 +224,7 @@ if __name__ == "__main__":
     win.started()
 
     # win.update_data(datetime.datetime.now(), sampledata())
-    import time
+    # import time
 
     for i in range(10):
         win.update_data(datetime.datetime.now(), sampledata(i))
