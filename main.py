@@ -129,12 +129,12 @@ def measure(
         q_res = collections.deque(maxlen=2)
         q_temp = collections.deque(maxlen=2)
         keithley.write("SENS:VOLT:OCOM OFF")
-        keithley.write("SENS:VOLT:NPLC 4")
+        keithley.write("SENS:VOLT:NPLC 2")
     elif mode == 2:  # delta method
         q_res = collections.deque(maxlen=3)
         q_temp = collections.deque(maxlen=3)
         keithley.write("SENS:VOLT:OCOM OFF")
-        keithley.write("SENS:VOLT:NPLC 4")
+        keithley.write("SENS:VOLT:NPLC 1")
 
     keithley.write("SOUR:FUNC CURR")
     keithley.write("SOUR:CURR:RANG:AUTO ON")
