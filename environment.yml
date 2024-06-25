@@ -10,5 +10,4 @@ dependencies:
   - xarray
   - pyqtgraph
   - qtpy
-  - pip:
-    - pyqt6
+  - pyside6

@@ -11,7 +11,11 @@ Assumes that the GPIB-USB-HS driver is installed.
 ## Running
 
 * Create a conda environment with the packages in `environment.yml`.
+  ```bash
+  conda env create -f environment.yml
+  ```
 * Modify `start.bat` to match the path to your conda installation.
+* Double-click `start.bat` to run the program.
 
 ## Notable changes
 

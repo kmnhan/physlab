@@ -28,7 +28,7 @@ except:  # noqa: E722
 #     (275, np.inf): ("High (25W)", 40, 60, 40),
 # }  #: Heater and PID parameters for each temperature range
 HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
-    (0.0, 9): ("Low (2.5W)", 100, 40, 40),
+    (0, 9): ("Low (2.5W)", 100, 40, 40),
     (9, 17): ("Low (2.5W)", 70, 35, 30),
     (17, 30): ("High (25W)", 35, 40, 40),
     (30, 75): ("High (25W)", 35, 40, 40),
@@ -226,7 +226,7 @@ def measure(
 
         while True:
             # In order to compensate for voltage measurement time delay, time and
-            # temperature are measured four times and averaged.
+            # temperature are measured twice and averaged.
 
             temperature: float = lake.sensor_B.temperature()
 
@@ -274,7 +274,7 @@ def measure(
             current: str = keithley.ask("SOUR:CURR?")
 
             writer.append(now, [str(temperature), resistance, current])
-            log.info(f"{now}\t{temperature:14.3f}\t{resistance}\t{current}")
+            log.info(f"{now} | {temperature:>7.3f} | {resistance} Ω at {current} A")
             if updatesignal is not None:
                 updatesignal.emit(now, (temperature, float(resistance), float(current)))
             adjust_heater(temperature)
@@ -414,6 +414,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
             self.spin_end,
             self.spin_rate,
             self.spin_rateh,
+            self.mode_combo,
         ):
             w.setDisabled(True)
         self.start_btn.setText("Abort Measurement")
@@ -434,6 +435,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
             self.spin_end,
             self.spin_rate,
             self.spin_rateh,
+            self.mode_combo,
         ):
             w.setDisabled(False)
         self.start_btn.setText("Start Measurement")

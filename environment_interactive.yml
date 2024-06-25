@@ -14,5 +14,4 @@ dependencies:
   - ipykernel
   - ipywidgets
   - jupyter
-  - pip:
-    - pyqt6
+  - pyside6
