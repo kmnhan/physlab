@@ -33,9 +33,10 @@ HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
     # (9, 17): ("1", 70, 35, 30),
     (0, 9): ("1", 30, 40, 40),
     (9, 17): ("1", 32, 35, 30),
-    (17, 30): ("2", 35, 40, 40),
+    (17, 30): ("2", 32, 35, 30),
     (30, 75): ("2", 35, 40, 40),
     (75, 150): ("2", 40, 40, 40),
+    (150, 275): ("2", 40, 50, 40),
     (275, np.inf): ("2", 40, 70, 40),
 }  #: Heater and PID parameters for each temperature range
 
@@ -104,7 +105,7 @@ def measure(
     lake.open()
     log.info(f"[Connected to {lake.query('*IDN?').strip()}]")
 
-    keithley = RequestHandler("GPIB1::18::INSTR")
+    keithley = RequestHandler("GPIB1::18::INSTR", interval_ms=0)
     keithley.open()
     log.info(f"[Connected to {keithley.query('*IDN?').strip()}]")
 
@@ -126,7 +127,7 @@ def measure(
     keithley.write("SENS:VOLT:RANG:AUTO ON")
     if mode == 0:  # offset-compensated ohms method
         keithley.write("SENS:VOLT:OCOM ON")
-        keithley.write("SENS:VOLT:NPLC 3")
+        keithley.write("SENS:VOLT:NPLC 2")
     elif mode == 1:  # current-reversal method
         q_res = collections.deque(maxlen=2)
         q_temp = collections.deque(maxlen=2)
@@ -150,7 +151,7 @@ def measure(
     if np.abs(temperature - tempstart) > 10:
         lake.write("RAMP 1,1,0")
         lake.write(f"SETP 1,{temperature + 1.0:.2f}")
-        time.sleep(3)
+        time.sleep(2)
 
     # Start data writer
     writer = WritingProc(filename)
@@ -188,16 +189,20 @@ def measure(
             temperature: float = get_krdg()
 
             if mode == 0:  # Offset-compensated ohms method
-                resistance: str = keithley.query("MEAS:VOLT?").strip()
+                # resistance: str = keithley.query("MEAS:VOLT?").strip()
+                msg: str = keithley.query(":MEAS:VOLT?; :SOUR:CURR?")
+                resistance, current = msg.split(";")
 
             elif mode == 1:  # Current-reversal method
-                sgn = np.sign(float(keithley.query("SOUR:CURR?")))
+                sgn = np.sign(float(keithley.query(":SOUR:CURR?")))
 
-                keithley.write(f"SOUR:CURR {-sgn * curr:.15f}")
+                # keithley.write(f"SOUR:CURR {-sgn * curr:.15f}")
+                msg = keithley.query(
+                    f":SOUR:CURR {-sgn * curr:.15f}; :MEAS:VOLT?; :SOUR:CURR?"
+                )
+                res, current = msg.split(";")
 
-                res = float(keithley.query("MEAS:VOLT?"))
-                q_res.append(res)
-
+                q_res.append(float(res))
                 if len(q_res) == 2:
                     resistance = str(-sgn * (q_res[1] - q_res[0]) / 2)
                 else:
@@ -206,11 +211,13 @@ def measure(
             elif mode == 2:  # Delta method
                 sgn = np.sign(float(keithley.query("SOUR:CURR?")))
 
-                keithley.write(f"SOUR:CURR {-sgn * curr:.15f}")
+                # keithley.write(f"SOUR:CURR {-sgn * curr:.15f}")
+                msg = keithley.query(
+                    f":SOUR:CURR {-sgn * curr:.15f}; :MEAS:VOLT?; :SOUR:CURR?"
+                )
+                res, current = msg.split(";")
 
-                res = float(keithley.query("MEAS:VOLT?"))
-                q_res.append(res)
-
+                q_res.append(float(res))
                 if len(q_res) == 3:
                     resistance = str(-sgn * (q_res[0] - 2 * q_res[1] + q_res[2]) / 4)
                 else:
@@ -218,8 +225,6 @@ def measure(
 
             now = now + (datetime.datetime.now() - now) / 2
             temperature = (temperature + get_krdg()) / 2
-
-            current: str = keithley.query("SOUR:CURR?").strip()
 
             if mode != 0:
                 q_temp.append(float(temperature))
@@ -270,8 +275,7 @@ def measure(
     writer.stop(2.0)
 
     # Stop measurement and close instruments
-    keithley.write("OUTP OFF")
-    keithley.write("SOUR:CURR 0")
+    keithley.write(":OUTP OFF; :SOUR:CURR 0")
     keithley.close()
     lake.close()
 

@@ -31,6 +31,8 @@ class RequestHandler:
 
     def wait_time(self):
         """Wait until the interval between requests has passed."""
+        if self.interval_ms == 0:
+            return
         while (time.perf_counter_ns() - self._last_update) <= self.interval_ms * 1e3:
             time.sleep(1e-4)
 
