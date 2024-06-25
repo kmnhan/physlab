@@ -33,7 +33,7 @@ HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
     (9, 17): ("1", 70, 35, 30),
     (17, 30): ("2", 35, 40, 40),
     (30, 75): ("2", 35, 40, 40),
-    (75, 275): ("2", 40, 40, 40),
+    (75, 150): ("2", 40, 40, 40),
     (275, np.inf): ("2", 40, 70, 40),
 }  #: Heater and PID parameters for each temperature range
 
@@ -134,7 +134,7 @@ def measure(
         q_res = collections.deque(maxlen=3)
         q_temp = collections.deque(maxlen=3)
         keithley.write("SENS:VOLT:OCOM OFF")
-        keithley.write("SENS:VOLT:NPLC 1")
+        keithley.write("SENS:VOLT:NPLC 2")
 
     keithley.write("SOUR:FUNC CURR")
     keithley.write("SOUR:CURR:RANG:AUTO ON")
