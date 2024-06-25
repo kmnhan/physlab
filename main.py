@@ -389,6 +389,7 @@ class CommandWidget(*uic.loadUiType("command.ui")):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
+        self.setWindowTitle("Lakeshore 325")
 
         self.write_btn.clicked.connect(self.write)
         self.query_btn.clicked.connect(self.query)
@@ -418,6 +419,7 @@ class CommandWidget(*uic.loadUiType("command.ui")):
             self.set_instrument(RequestHandler("GPIB0::12::INSTR"))
             self.instrument.open()
         self.instrument.write(self.input)
+        self.sigReply.emit("Command sent.", datetime.datetime.now())
 
     @QtCore.Slot()
     def query(self):
