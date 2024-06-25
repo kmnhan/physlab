@@ -41,7 +41,7 @@ except:  # noqa: E722
 #     (30, 75): ("2", 35, 40, 40),
 #     (75, 150): ("2", 40, 40, 40),
 #     (150, 275): ("2", 40, 50, 40),
-#     (275, np.inf): ("2", 40, 70, 40),
+#     (275, 350): ("2", 40, 70, 40),
 # }  #: Heater and PID parameters for each temperature range
 HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
     # (0, 9): ("1", 100, 40, 40),
@@ -51,7 +51,7 @@ HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
     (26, 75): ("2", 100, 30, 20),
     (75, 150): ("2", 40, 40, 40),
     (150, 275): ("2", 40, 50, 40),
-    (275, np.inf): ("2", 40, 70, 40),
+    (275, 350): ("2", 40, 70, 40),
 }  #: Heater and PID parameters for each temperature range
 
 log = logging.getLogger(__name__)
@@ -202,7 +202,7 @@ def measure(
 
     for i, (temprange, params) in enumerate(HEATER_PARAMETERS.items()):
         lake.write(
-            f"ZONE 1,{i+1},{temprange[0]},"
+            f"ZONE 1,{i+1},{temprange[1]},"
             f"{params[1]},{params[2]},{params[3]}"
             f"0, {params[0]}"
         )
