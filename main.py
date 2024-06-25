@@ -6,12 +6,14 @@ import datetime
 import logging
 import multiprocessing
 import os
+import queue
 import sys
 import threading
 import time
 from typing import Literal
 
 import numpy as np
+import pyvisa
 from qtpy import QtCore, QtWidgets, uic
 
 from instrument import RequestHandler
@@ -49,6 +51,28 @@ handler.setFormatter(logging.Formatter("%(message)s"))
 log.addHandler(handler)
 
 
+def communicate(handler, queue):
+    if not queue.empty():
+        message, replysignal, is_query = queue.get()
+
+        if not is_query:  # Write only
+            try:
+                handler.write(message)
+            except (pyvisa.VisaIOError, pyvisa.InvalidSession):
+                log.exception("Error writing command")
+            else:
+                log.info(f"[<- {message}]")
+                replysignal.emit("Command sent.", datetime.datetime.now())
+        else:  # Query
+            try:
+                rep = handler.query(message)
+            except (pyvisa.VisaIOError, pyvisa.InvalidSession):
+                log.exception("Error querying command")
+            else:
+                log.info(f"[-> {message}]")
+                replysignal.emit(rep, datetime.datetime.now())
+
+
 def measure(
     filename: os.PathLike,
     tempstart: float,
@@ -63,7 +87,7 @@ def measure(
     updatesignal: QtCore.SignalInstance | None = None,
     heatingsignal: QtCore.SignalInstance | None = None,
     abortflag: threading.Event | None = None,
-    commandwidget: CommandWidget | None = None,
+    queue: queue.Queue | None = None,
 ):
     """Loop for the R-T measurement.
 
@@ -108,20 +132,18 @@ def measure(
         The loop is aborted when this event is set, by default None
 
     """
-    if commandwidget is not None:
-        commandwidget.close_instrument()
-
     # Connect to GPIB instruments
     lake = RequestHandler("GPIB0::12::INSTR")
     lake.open()
     log.info(f"[Connected to {lake.query('*IDN?').strip()}]")
 
-    if commandwidget is not None:
-        commandwidget.set_instrument(lake)
-
     keithley = RequestHandler("GPIB1::18::INSTR", interval_ms=0)
     keithley.open()
     log.info(f"[Connected to {keithley.query('*IDN?').strip()}]")
+
+    def flush_commands():
+        if queue is not None:
+            communicate(lake, queue)
 
     def get_krdg() -> float:
         return float(lake.query("KRDG? B").strip())
@@ -202,6 +224,8 @@ def measure(
         # adjust_heater(300.0)
 
         while True:
+            flush_commands()
+
             # In order to compensate for voltage measurement time, the time and
             # temperature are measured twice and averaged.
             now: datetime.datetime = datetime.datetime.now()
@@ -244,6 +268,8 @@ def measure(
 
             now = now + (datetime.datetime.now() - now) / 2
             temperature = (temperature + get_krdg()) / 2
+
+            flush_commands()
 
             if mode != 0:
                 q_temp.append(float(temperature))
@@ -296,11 +322,7 @@ def measure(
     # Stop measurement and close instruments
     keithley.write(":OUTP OFF; :SOUR:CURR 0")
     keithley.close()
-
-    if commandwidget is not None:
-        commandwidget.close_instrument()
-    else:
-        lake.close()
+    lake.close()
 
 
 class WritingProc(multiprocessing.Process):
@@ -382,9 +404,55 @@ class MeasureThread(QtCore.QThread):
         super().__init__()
         self.aborted = threading.Event()
         self.measure_params = None
-        self.command_widget = None
+        self.mutex: QtCore.QMutex | None = None
+
+    def lock_mutex(self):
+        """Locks the mutex to ensure thread safety."""
+        if self.mutex is not None:
+            self.mutex.lock()
+
+    def unlock_mutex(self):
+        """Unlocks the mutex to release the lock."""
+        if self.mutex is not None:
+            self.mutex.unlock()
+
+    def request_query(self, message: str, signal: QtCore.SignalInstance):
+        """Add a query request to the queue.
+
+        Parameters
+        ----------
+        message : str
+            The query message to send.
+        signal : QtCore.SignalInstance
+            The signal to emit the result of the query when the query is complete. The
+            signal must take a string as the first argument and a object as the second.
+            The second argument is the datetime object indicating the time the query was
+            placed.
+        """
+        self.lock_mutex()
+        self.queue.put((message, signal, True))
+        self.unlock_mutex()
+
+    def request_write(self, message: str, signal: QtCore.SignalInstance):
+        """Add a write request to the queue.
+
+        Parameters
+        ----------
+        message : str
+            The message to write.
+        signal : QtCore.SignalInstance
+            The signal to emit a message when successfully written. The signal must take
+            a string as the first argument and a object as the second. The second
+            argument is the datetime object indicating the time the query was placed.
+        """
+        self.lock_mutex()
+        self.queue.put((message, signal, False))
+        self.unlock_mutex()
 
     def run(self):
+        self.mutex = QtCore.QMutex()
+        self.queue = queue.Queue()
+
         self.sigStarted.emit()
         self.aborted.clear()
         measure(
@@ -392,17 +460,15 @@ class MeasureThread(QtCore.QThread):
             updatesignal=self.sigUpdated,
             heatingsignal=self.sigHeating,
             abortflag=self.aborted,
-            commandwidget=self.command_widget,
+            queue=self.queue,
         )
         self.sigFinished.emit()
 
 
 class CommandWidget(*uic.loadUiType("command.ui")):
-    sigWrite = QtCore.Signal(str)
-    sigQuery = QtCore.Signal(str)
     sigReply = QtCore.Signal(str, object)
 
-    def __init__(self):
+    def __init__(self, measure_thread: MeasureThread):
         super().__init__()
         self.setupUi(self)
         self.setWindowTitle("Lakeshore 325")
@@ -410,39 +476,37 @@ class CommandWidget(*uic.loadUiType("command.ui")):
         self.write_btn.clicked.connect(self.write)
         self.query_btn.clicked.connect(self.query)
 
+        self.measure_thread = measure_thread
+
         self.sigReply.connect(self.set_reply)
-        self.instrument: RequestHandler | None = None
 
     @property
     def input(self) -> str:
         return self.text_in.toPlainText().strip()
 
-    def set_instrument(self, instrument: RequestHandler):
-        self.instrument = instrument
-
-    def close_instrument(self):
-        if self.instrument:
-            self.instrument.close()
-            self.instrument = None
-
-    @QtCore.Slot(str, object)
-    def set_reply(self, message: str, _: datetime.datetime):
-        self.text_out.setPlainText(message)
-
     @QtCore.Slot()
     def write(self):
-        if not self.instrument:
-            self.set_instrument(RequestHandler("GPIB0::12::INSTR"))
-            self.instrument.open()
-        self.instrument.write(self.input)
-        self.sigReply.emit("Command sent.", datetime.datetime.now())
+        if self.measure_thread.isRunning():
+            self.measure_thread.request_write(self.input, self.sigReply)
+        else:
+            handler = RequestHandler("GPIB0::12::INSTR")
+            handler.open()
+            q = queue.Queue()
+            q.put((self.input, self.sigReply, False))
+            communicate(handler, q)
+            handler.close()
 
     @QtCore.Slot()
     def query(self):
-        if not self.instrument:
-            self.set_instrument(RequestHandler("GPIB0::12::INSTR"))
-            self.instrument.open()
-        self.sigReply.emit(self.instrument.query(self.input), datetime.datetime.now())
+        if self.measure_thread.isRunning():
+            self.measure_thread.request_query(self.input, self.sigReply)
+        else:
+            handler = RequestHandler("GPIB0::12::INSTR")
+            handler.open()
+            q = queue.Queue()
+            q.put((self.input, self.sigReply, True))
+            communicate(handler, q)
+            handler.close()
 
 
 class MainWindow(*uic.loadUiType("main.ui")):
@@ -456,19 +520,18 @@ class MainWindow(*uic.loadUiType("main.ui")):
         self.plot = PlotWindow()
         self.actionplot.triggered.connect(self.toggle_plot)
 
-        self.command_widget = CommandWidget()
-        self.actioncommand.triggered.connect(self.command_widget.show)
-
         self.actionmanual.toggled.connect(self.toggle_manual)
 
         self.measurement_thread = MeasureThread()
-        self.measurement_thread.command_widget = self.command_widget
         self.measurement_thread.sigStarted.connect(self.started)
         self.measurement_thread.sigStarted.connect(self.plot.started)
         self.measurement_thread.sigHeating.connect(self.plot.started_heating)
         self.measurement_thread.sigUpdated.connect(self.plot.update_data)
         self.measurement_thread.sigUpdated.connect(self.updated)
         self.measurement_thread.sigFinished.connect(self.finished)
+
+        self.command_widget = CommandWidget(self.measurement_thread)
+        self.actioncommand.triggered.connect(self.command_widget.show)
 
     @property
     def measurement_parameters(self) -> dict:
@@ -607,7 +670,6 @@ class MainWindow(*uic.loadUiType("main.ui")):
     def closeEvent(self, *args, **kwargs):
         self.abort_measurement()
         self.plot.close()
-        self.command_widget.close_instrument()
         self.command_widget.close()
         super().closeEvent(*args, **kwargs)
 
