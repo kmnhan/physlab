@@ -8,7 +8,8 @@ import threading
 import time
 
 import numpy as np
-from qcodes.instrument_drivers.Keithley import Keithley2450
+
+# from qcodes.instrument_drivers.Keithley import Keithley2450
 from qtpy import QtCore, QtWidgets, uic
 
 from instrument import RequestHandler
@@ -164,7 +165,9 @@ def measure(
     # lake: LakeshoreModel325 = LakeshoreModel325("lake", "GPIB0::12::INSTR")
     lake = RequestHandler("GPIB0::12::INSTR")
     lake.open()
-    keithley: Keithley2450 = Keithley2450("keithley", "GPIB1::18::INSTR")
+    # keithley: Keithley2450 = Keithley2450("keithley", "GPIB1::18::INSTR")
+    keithley = RequestHandler("GPIB1::18::INSTR")
+    keithley.open()
 
     def get_krdg() -> float:
         return float(lake.query("KRDG? B").strip())
@@ -177,8 +180,9 @@ def measure(
                 return
 
     # Keithley 2450 setup
-    keithley.reset()
+    keithley.write("*RST")
     keithley.write('SENS:FUNC "VOLT"')
+    keithley.write("SENS:VOLT:RSEN ON")  # 4-wire mode
     keithley.write("SENS:VOLT:UNIT OHM")
     keithley.write("SENS:VOLT:RANG:AUTO ON")
     if mode == 0:  # offset-compensated ohms method
@@ -190,7 +194,6 @@ def measure(
     elif mode == 2:  # delta method
         keithley.write("SENS:VOLT:OCOM OFF")
         keithley.write("SENS:VOLT:NPLC 1.5")
-    keithley.write("SENS:VOLT:RSEN ON")  # 4-wire mode
 
     keithley.write("SOUR:FUNC CURR")
     keithley.write("SOUR:CURR:RANG:AUTO ON")
@@ -229,6 +232,7 @@ def measure(
         lake.write(f"SETP 1,{target:.2f}")
         adjust_heater(300.0)
 
+        keithley.write("OUTP ON")
         while True:
             # In order to compensate for voltage measurement time delay, time and
             # temperature are measured twice and averaged.
@@ -237,50 +241,33 @@ def measure(
 
             now = datetime.datetime.now()
             if mode == 0:  # offset-compensated ohms method
-                keithley.write("OUTP ON")
-                resistance: str = keithley.ask("MEAS:VOLT?")
-                keithley.write("OUTP OFF")
+                resistance: str = keithley.query("MEAS:VOLT?").strip()
 
             elif mode == 1:  # current-reversal method
-                keithley.write("OUTP ON")
-                rp = float(keithley.ask("MEAS:VOLT?"))
-                keithley.write("OUTP OFF")
+                rp = float(keithley.query("MEAS:VOLT?"))
 
-                keithley.write("SOUR:CURR 0.0")
                 keithley.write(f"SOUR:CURR -{curr:.15f}")
 
-                keithley.write("OUTP ON")
-                rm = float(keithley.ask("MEAS:VOLT?"))
-                keithley.write("OUTP OFF")
+                rm = float(keithley.query("MEAS:VOLT?"))
 
-                keithley.write("SOUR:CURR 0.0")
                 keithley.write(f"SOUR:CURR {curr:.15f}")
 
                 resistance = str((abs(rp) + abs(rm)) / 2)
 
             elif mode == 2:  # delta method
-                sgn = np.sign(float(keithley.ask("SOUR:CURR?")))
+                sgn = np.sign(float(keithley.query("SOUR:CURR?")))
 
-                keithley.write("SOUR:CURR 0.0")
                 keithley.write(f"SOUR:CURR {-sgn * curr:.15f}")
 
-                keithley.write("OUTP ON")
-                r1 = float(keithley.ask("MEAS:VOLT?"))
-                keithley.write("OUTP OFF")
+                r1 = float(keithley.query("MEAS:VOLT?"))
 
-                keithley.write("SOUR:CURR 0.0")
                 keithley.write(f"SOUR:CURR {sgn * curr:.15f}")
 
-                keithley.write("OUTP ON")
-                r2 = float(keithley.ask("MEAS:VOLT?"))
-                keithley.write("OUTP OFF")
+                r2 = float(keithley.query("MEAS:VOLT?"))
 
-                keithley.write("SOUR:CURR 0.0")
                 keithley.write(f"SOUR:CURR {-sgn * curr:.15f}")
 
-                keithley.write("OUTP ON")
-                r3 = float(keithley.ask("MEAS:VOLT?"))
-                keithley.write("OUTP OFF")
+                r3 = float(keithley.query("MEAS:VOLT?"))
 
                 ra, rb = (r1 - r2) / 2, (r3 - r2) / 2
                 resistance = str(abs(ra - rb) / 2)
@@ -290,7 +277,7 @@ def measure(
             temperature += get_krdg()
             temperature /= 2.0
 
-            current: str = keithley.ask("SOUR:CURR?")
+            current: str = keithley.query("SOUR:CURR?").strip()
 
             writer.append(now, [str(temperature), resistance, current])
             log.info(
@@ -313,6 +300,8 @@ def measure(
                     break
 
             time.sleep(delta)
+
+        keithley.write("OUTP OFF")
 
         if abortflag is not None:
             if abortflag.is_set():
