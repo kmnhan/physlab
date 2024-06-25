@@ -61,7 +61,7 @@ def communicate(handler, queue):
             except (pyvisa.VisaIOError, pyvisa.InvalidSession):
                 log.exception("Error writing command")
             else:
-                log.info(f"[<- {message}]")
+                log.info(f"[<- {message.strip()}]")
                 replysignal.emit("Command sent.", datetime.datetime.now())
         else:  # Query
             try:
@@ -69,8 +69,8 @@ def communicate(handler, queue):
             except (pyvisa.VisaIOError, pyvisa.InvalidSession):
                 log.exception("Error querying command")
             else:
-                log.info(f"[<- {message}]")
-                log.info(f"[-> {rep}]")
+                log.info(f"[<- {message.strip()}]")
+                log.info(f"[-> {rep.strip()}]")
                 replysignal.emit(rep, datetime.datetime.now())
 
 
