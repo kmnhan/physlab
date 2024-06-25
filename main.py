@@ -454,6 +454,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
     def started(self):
         for w in (
             self.file_line,
+            self.file_btn,
             self.spin_delta,
             self.spin_curr,
             self.spin_start,
@@ -476,6 +477,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
     def finished(self):
         for w in (
             self.file_line,
+            self.file_btn,
             self.spin_delta,
             self.spin_curr,
             self.spin_start,
