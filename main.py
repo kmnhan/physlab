@@ -203,7 +203,7 @@ def measure(
     for i, (temprange, params) in enumerate(HEATER_PARAMETERS.items()):
         lake.write(
             f"ZONE 1,{i+1},{temprange[1]},"
-            f"{params[1]},{params[2]},{params[3]}"
+            f"{params[1]},{params[2]},{params[3]},"
             f"0, {params[0]}"
         )
     lake.write("CMODE 1,2")
