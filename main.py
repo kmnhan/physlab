@@ -180,7 +180,7 @@ def measure(
         # adjust_heater(300.0)
 
         while True:
-            # In order to compensate for voltage measurement time delay, time and
+            # In order to compensate for voltage measurement time, the time and
             # temperature are measured twice and averaged.
             temperature: float = get_krdg()
 
@@ -197,7 +197,7 @@ def measure(
                 q_res.append(res)
 
                 if len(q_res) == 2:
-                    resistance = str(sgn * (q_res[0] - q_res[1]) / 2)
+                    resistance = str(-sgn * (q_res[1] - q_res[0]) / 2)
                 else:
                     resistance = "nan"
 
@@ -210,7 +210,7 @@ def measure(
                 q_res.append(res)
 
                 if len(q_res) == 3:
-                    resistance = str(-sgn * (q_res[0] + q_res[2] - 2 * q_res[1]) / 4)
+                    resistance = str(-sgn * (q_res[0] - 2 * q_res[1] + q_res[2]) / 4)
                 else:
                     resistance = "nan"
 
