@@ -253,6 +253,7 @@ def measure(
                 keithley.write(f"SOUR:CURR {-sgn * curr:.15f}")
 
                 res = float(keithley.query("MEAS:VOLT?"))
+                q_res.append(res)
 
                 if len(q_res) == 2:
                     resistance = str(sgn * (q_res[0] - q_res[1]) / 2)
