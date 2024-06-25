@@ -484,6 +484,10 @@ class CommandWidget(*uic.loadUiType("command.ui")):
     def input(self) -> str:
         return self.text_in.toPlainText().strip()
 
+    @QtCore.Slot(str, object)
+    def set_reply(self, message: str, _: datetime.datetime):
+        self.text_out.setPlainText(message)
+
     @QtCore.Slot()
     def write(self):
         if self.measure_thread.isRunning():
