@@ -148,7 +148,7 @@ def measure(
     if np.abs(temperature - tempstart) > 10:
         lake.write("RAMP 1,1,0")
         lake.write(f"SETP 1,{temperature + 1.0:.2f}")
-        time.sleep(2)
+        time.sleep(3)
 
     # Start data writer
     writer = WritingProc(filename)
@@ -250,10 +250,10 @@ def measure(
 
                     if time_left >= delay * 60:
                         break  # Exit loop
-                else:
-                    if t_cool_end is not None:
-                        # Overshoot, reset timer
-                        t_cool_end = None
+                # else:
+                # if t_cool_end is not None:
+                #     # Overshoot, reset timer
+                #     t_cool_end = None
 
             if abortflag is not None:
                 if abortflag.is_set():
