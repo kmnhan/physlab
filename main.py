@@ -171,8 +171,8 @@ def measure(
                 return
 
     # Keithley 2450 setup
-    # keithley.reset()
-    keithley.write("SENS:FUNC VOLT")
+    keithley.reset()
+    keithley.write('SENS:FUNC "VOLT"')
     keithley.write("SENS:VOLT:UNIT OHM")
     keithley.write("SENS:VOLT:RANG:AUTO ON")
     if mode == 0:  # offset-compensated ohms method
@@ -184,13 +184,12 @@ def measure(
     elif mode == 2:  # delta method
         keithley.write("SENS:VOLT:OCOM OFF")
         keithley.write("SENS:VOLT:NPLC 1.5")
+    keithley.write("SENS:VOLT:RSEN ON")  # 4-wire mode
 
     keithley.write("SOUR:FUNC CURR")
     keithley.write("SOUR:CURR:RANG:AUTO ON")
     keithley.write("SOUR:CURR:VLIM 10")
     keithley.write(f"SOUR:CURR {curr:.15f}")
-
-    keithley.write("SENS:VOLT:RSEN ON")
 
     # LakeShore325 temperature controller
     lake.write("OUTMODE 1,1,2,1")
