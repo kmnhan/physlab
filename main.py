@@ -416,12 +416,14 @@ class CommandWidget(*uic.loadUiType("command.ui")):
     def write(self):
         if not self.instrument:
             self.set_instrument(RequestHandler("GPIB0::12::INSTR"))
+            self.instrument.open()
         self.instrument.write(self.input)
 
     @QtCore.Slot()
     def query(self):
         if not self.instrument:
             self.set_instrument(RequestHandler("GPIB0::12::INSTR"))
+            self.instrument.open()
         self.sigReply.emit(self.instrument.query(self.input), datetime.datetime.now())
 
 
