@@ -69,7 +69,8 @@ def communicate(handler, queue):
             except (pyvisa.VisaIOError, pyvisa.InvalidSession):
                 log.exception("Error querying command")
             else:
-                log.info(f"[-> {message}]")
+                log.info(f"[<- {message}]")
+                log.info(f"[-> {rep}]")
                 replysignal.emit(rep, datetime.datetime.now())
 
 
