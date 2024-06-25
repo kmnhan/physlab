@@ -184,9 +184,9 @@ def measure(
         while True:
             # In order to compensate for voltage measurement time, the time and
             # temperature are measured twice and averaged.
+            now: datetime.datetime = datetime.datetime.now()
             temperature: float = get_krdg()
 
-            now: datetime.datetime = datetime.datetime.now()
             if mode == 0:  # Offset-compensated ohms method
                 resistance: str = keithley.query("MEAS:VOLT?").strip()
 
@@ -217,14 +217,12 @@ def measure(
                     resistance = "nan"
 
             now = now + (datetime.datetime.now() - now) / 2
-
-            temperature += get_krdg()
-            temperature /= 2.0
+            temperature = (temperature + get_krdg()) / 2
 
             current: str = keithley.query("SOUR:CURR?").strip()
 
             if mode != 0:
-                q_temp.append(temperature)
+                q_temp.append(float(temperature))
                 temperature = sum(q_temp) / len(q_temp)
 
             if resistance != "nan":
