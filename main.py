@@ -162,6 +162,7 @@ def measure(
     keithley: Keithley2450 = Keithley2450("keithley", "GPIB1::18::INSTR")
 
     def adjust_heater(temperature):
+        print("adjust heater start")
         for temprange, params in HEATER_PARAMETERS.items():
             if temprange[0] < temperature < temprange[1]:
                 lake.heater_1.output_range(params[0])
@@ -169,6 +170,7 @@ def measure(
                 lake.heater_1.I(params[2])
                 lake.heater_1.D(params[3])
                 return
+        print("adjust heater end")
 
     # Keithley 2450 setup
     keithley.reset()
@@ -273,7 +275,10 @@ def measure(
             current: str = keithley.ask("SOUR:CURR?")
 
             writer.append(now, [str(temperature), resistance, current])
-            log.info(f"{now} | {temperature:>7.3f} | {resistance} Ω at {current} A")
+            log.info(
+                f"{now} | {temperature:>7.3f} K | {float(resistance):.9f} Ω "
+                f"at {float(current):.9f} A"
+            )
             if updatesignal is not None:
                 updatesignal.emit(now, (temperature, float(resistance), float(current)))
             adjust_heater(temperature)
