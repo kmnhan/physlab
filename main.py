@@ -21,21 +21,20 @@ except:  # noqa: E722
 
 
 # HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
-#     (2, 10): ("Low (2.5W)", 30, 40, 40),
-#     (10, 15): ("High (25W)", 25, 30, 30),
-#     (15, 100): ("High (25W)", 35, 40, 40),
-#     (100, 275): ("High (25W)", 40, 40, 40),
-#     (275, np.inf): ("High (25W)", 40, 60, 40),
+#     (2, 10): ("1", 30, 40, 40),
+#     (10, 15): ("2", 25, 30, 30),
+#     (15, 100): ("2", 35, 40, 40),
+#     (100, 275): ("2", 40, 40, 40),
+#     (275, np.inf): ("2", 40, 60, 40),
 # }  #: Heater and PID parameters for each temperature range
 HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
-    (0, 9): ("Low (2.5W)", 100, 40, 40),
-    (9, 17): ("Low (2.5W)", 70, 35, 30),
-    (17, 30): ("High (25W)", 35, 40, 40),
-    (30, 75): ("High (25W)", 35, 40, 40),
-    (75, 275): ("High (25W)", 40, 40, 40),
-    (275, np.inf): ("High (25W)", 40, 70, 40),
+    (0, 9): ("1", 100, 40, 40),
+    (9, 17): ("1", 70, 35, 30),
+    (17, 30): ("2", 35, 40, 40),
+    (30, 75): ("2", 35, 40, 40),
+    (75, 275): ("2", 40, 40, 40),
+    (275, np.inf): ("2", 40, 70, 40),
 }  #: Heater and PID parameters for each temperature range
-
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -162,15 +161,11 @@ def measure(
     keithley: Keithley2450 = Keithley2450("keithley", "GPIB1::18::INSTR")
 
     def adjust_heater(temperature):
-        print("adjust heater start")
         for temprange, params in HEATER_PARAMETERS.items():
             if temprange[0] < temperature < temprange[1]:
-                lake.heater_1.output_range(params[0])
-                lake.heater_1.P(params[1])
-                lake.heater_1.I(params[2])
-                lake.heater_1.D(params[3])
+                lake.write(f"RANGE 1,{params[0]}")
+                lake.write(f"PID 1,{params[1]},{params[2]},{params[3]}")
                 return
-        print("adjust heater end")
 
     # Keithley 2450 setup
     keithley.reset()
