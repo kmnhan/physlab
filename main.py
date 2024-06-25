@@ -89,9 +89,13 @@ class WritingProc(multiprocessing.Process):
                     self.queue.put(self.queue.get())
                 continue
 
-    def stop(self):
+    def stop(self, timeout: int | None = None):
         n_left = int(self.queue.qsize())
         if n_left != 0:
+            if timeout is not None:
+                time.sleep(timeout)
+                self.stop()
+                return
             print(
                 f"Failed to write {n_left} data "
                 + ("entries:" if n_left > 1 else "entry:")
@@ -242,11 +246,14 @@ def measure(
                 rp = float(keithley.ask("MEAS:VOLT?"))
                 keithley.write("OUTP OFF")
 
+                keithley.write("SOUR:CURR 0.0")
                 keithley.write(f"SOUR:CURR -{curr:.15f}")
+
                 keithley.write("OUTP ON")
                 rm = float(keithley.ask("MEAS:VOLT?"))
                 keithley.write("OUTP OFF")
 
+                keithley.write("SOUR:CURR 0.0")
                 keithley.write(f"SOUR:CURR {curr:.15f}")
 
                 resistance = str((abs(rp) + abs(rm)) / 2)
@@ -254,17 +261,23 @@ def measure(
             elif mode == 2:  # delta method
                 sgn = np.sign(float(keithley.ask("SOUR:CURR?")))
 
+                keithley.write("SOUR:CURR 0.0")
                 keithley.write(f"SOUR:CURR {-sgn * curr:.15f}")
+
                 keithley.write("OUTP ON")
                 r1 = float(keithley.ask("MEAS:VOLT?"))
                 keithley.write("OUTP OFF")
 
+                keithley.write("SOUR:CURR 0.0")
                 keithley.write(f"SOUR:CURR {sgn * curr:.15f}")
+
                 keithley.write("OUTP ON")
                 r2 = float(keithley.ask("MEAS:VOLT?"))
                 keithley.write("OUTP OFF")
 
+                keithley.write("SOUR:CURR 0.0")
                 keithley.write(f"SOUR:CURR {-sgn * curr:.15f}")
+
                 keithley.write("OUTP ON")
                 r3 = float(keithley.ask("MEAS:VOLT?"))
                 keithley.write("OUTP OFF")
@@ -281,8 +294,10 @@ def measure(
 
             writer.append(now, [str(temperature), resistance, current])
             log.info(
-                f"{now} | {temperature:>7.3f} K | {float(resistance):.9f} Ω "
-                f"at {float(current):.9f} A"
+                f"  {now}  "
+                f"|  {temperature:>7.3f} K  "
+                f"|  {float(resistance):>5.5f} Ω  "
+                f"|  {float(current)*1e+3:.6f} mA  "
             )
             if updatesignal is not None:
                 updatesignal.emit(now, (temperature, float(resistance), float(current)))
@@ -302,8 +317,7 @@ def measure(
         if abortflag is not None:
             if abortflag.is_set():
                 break
-
-    writer.stop()
+    writer.stop(1.0)
     keithley.write("SOUR:CURR 0")
     keithley.close()
     lake.close()
