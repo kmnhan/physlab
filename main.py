@@ -187,6 +187,9 @@ def measure(
     # if not manual_control:
     # lake.write("OUTMODE 1,1,2,1")  # not applicable for 325
 
+    lake.write("*RST")
+    lake.write("CSET 1,B,1,0,2")
+
     temperature = get_krdg()
 
     if not manual and np.abs(temperature - tempstart) > 10:
