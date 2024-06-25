@@ -9,9 +9,9 @@ import time
 
 import numpy as np
 from qcodes.instrument_drivers.Keithley import Keithley2450
-from qcodes.instrument_drivers.Lakeshore import LakeshoreModel325
 from qtpy import QtCore, QtWidgets, uic
 
+from instrument import RequestHandler
 from plotting import PlotWindow
 
 try:
@@ -157,8 +157,12 @@ def measure(
 
     """
     # Connect to GPIB instruments
-    lake: LakeshoreModel325 = LakeshoreModel325("lake", "GPIB0::12::INSTR")
+    # lake: LakeshoreModel325 = LakeshoreModel325("lake", "GPIB0::12::INSTR")
+    lake = RequestHandler("GPIB0::12::INSTR")
     keithley: Keithley2450 = Keithley2450("keithley", "GPIB1::18::INSTR")
+
+    def get_krdg() -> float:
+        return float(lake.query("KRDG? B").strip())
 
     def adjust_heater(temperature):
         for temprange, params in HEATER_PARAMETERS.items():
@@ -190,11 +194,11 @@ def measure(
 
     # LakeShore325 temperature controller
     lake.write("OUTMODE 1,1,2,1")
-    temperature = lake.sensor_B.temperature()
+    temperature = get_krdg()
 
     if np.abs(temperature - tempstart) > 10:
         lake.write("RAMP 1,1,0")
-        lake.heater_1.setpoint(temperature + 1.0)
+        lake.write(f"SETP 1,{temperature + 1.0:.2f}")
         time.sleep(2)
 
     # Start data writer
@@ -217,14 +221,14 @@ def measure(
 
         log.info(f"[Set temperature {target} K ]")
         lake.write(f"RAMP 1,1,{temprate}")
-        lake.heater_1.setpoint(target)
+        lake.write(f"SETP 1,{target:.2f}")
         adjust_heater(300.0)
 
         while True:
             # In order to compensate for voltage measurement time delay, time and
             # temperature are measured twice and averaged.
 
-            temperature: float = lake.sensor_B.temperature()
+            temperature: float = get_krdg()
 
             now = datetime.datetime.now()
             if mode == 0:  # offset-compensated ohms method
@@ -269,7 +273,7 @@ def measure(
 
             now = now + (datetime.datetime.now() - now) / 2
 
-            temperature += lake.sensor_B.temperature()
+            temperature += get_krdg()
             temperature /= 2.0
 
             current: str = keithley.ask("SOUR:CURR?")
