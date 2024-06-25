@@ -124,7 +124,7 @@ def measure(
     keithley.write("SENS:VOLT:RANG:AUTO ON")
     if mode == 0:  # offset-compensated ohms method
         keithley.write("SENS:VOLT:OCOM ON")
-        keithley.write("SENS:VOLT:NPLC 4")
+        keithley.write("SENS:VOLT:NPLC 3")
     elif mode == 1:  # current-reversal method
         q_res = collections.deque(maxlen=2)
         q_temp = collections.deque(maxlen=2)
