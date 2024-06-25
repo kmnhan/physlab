@@ -293,7 +293,7 @@ def measure(
                     )
                 adjust_heater(temperature)
 
-                if np.abs(target - temperature) < 0.5:
+                if not manual and np.abs(target - temperature) < 0.5:
                     if t_cool_end is None:
                         t_cool_end = time.perf_counter()
 
