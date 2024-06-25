@@ -108,14 +108,16 @@ def measure(
         The loop is aborted when this event is set, by default None
 
     """
-    commandwidget.close_instrument()
+    if commandwidget is not None:
+        commandwidget.close_instrument()
 
     # Connect to GPIB instruments
     lake = RequestHandler("GPIB0::12::INSTR")
     lake.open()
     log.info(f"[Connected to {lake.query('*IDN?').strip()}]")
 
-    commandwidget.set_instrument(lake)
+    if commandwidget is not None:
+        commandwidget.set_instrument(lake)
 
     keithley = RequestHandler("GPIB1::18::INSTR", interval_ms=0)
     keithley.open()
@@ -294,7 +296,11 @@ def measure(
     # Stop measurement and close instruments
     keithley.write(":OUTP OFF; :SOUR:CURR 0")
     keithley.close()
-    commandwidget.close_instrument()
+
+    if commandwidget is not None:
+        commandwidget.close_instrument()
+    else:
+        lake.close()
 
 
 class WritingProc(multiprocessing.Process):
@@ -456,6 +462,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
         self.actionmanual.toggled.connect(self.toggle_manual)
 
         self.measurement_thread = MeasureThread()
+        self.measurement_thread.command_widget = self.command_widget
         self.measurement_thread.sigStarted.connect(self.started)
         self.measurement_thread.sigStarted.connect(self.plot.started)
         self.measurement_thread.sigHeating.connect(self.plot.started_heating)
