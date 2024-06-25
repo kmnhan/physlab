@@ -227,17 +227,20 @@ def measure(
             temperature: float = lake.sensor_B.temperature()
 
             now = datetime.datetime.now()
-            keithley.write("OUTP ON")
             if mode == 0:  # offset-compensated ohms method
+                keithley.write("OUTP ON")
                 resistance: str = keithley.ask("MEAS:VOLT?")
+                keithley.write("OUTP OFF")
 
             elif mode == 1:  # current-reversal method
-                keithley.wait()
+                keithley.write("OUTP ON")
                 rp = float(keithley.ask("MEAS:VOLT?"))
+                keithley.write("OUTP OFF")
 
                 keithley.write(f"SOUR:CURR -{curr:.15f}")
-                keithley.wait()
+                keithley.write("OUTP ON")
                 rm = float(keithley.ask("MEAS:VOLT?"))
+                keithley.write("OUTP OFF")
 
                 keithley.write(f"SOUR:CURR {curr:.15f}")
 
@@ -247,21 +250,23 @@ def measure(
                 sgn = np.sign(float(keithley.ask("SOUR:CURR?")))
 
                 keithley.write(f"SOUR:CURR {-sgn * curr:.15f}")
-                keithley.wait()
+                keithley.write("OUTP ON")
                 r1 = float(keithley.ask("MEAS:VOLT?"))
+                keithley.write("OUTP OFF")
 
                 keithley.write(f"SOUR:CURR {sgn * curr:.15f}")
-                keithley.wait()
+                keithley.write("OUTP ON")
                 r2 = float(keithley.ask("MEAS:VOLT?"))
+                keithley.write("OUTP OFF")
 
                 keithley.write(f"SOUR:CURR {-sgn * curr:.15f}")
-                keithley.wait()
+                keithley.write("OUTP ON")
                 r3 = float(keithley.ask("MEAS:VOLT?"))
+                keithley.write("OUTP OFF")
 
                 ra, rb = (r1 - r2) / 2, (r3 - r2) / 2
                 resistance = str(abs(ra - rb) / 2)
 
-            keithley.write("OUTP OFF")
             now = now + (datetime.datetime.now() - now) / 2
 
             temperature += lake.sensor_B.temperature()
