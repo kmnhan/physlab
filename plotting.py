@@ -47,7 +47,7 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
     @QtCore.Slot()
     def reset_data(self):
         self._data = [[], [], []]
-        self.about_to_heat = False
+        # self.about_to_heat = False
         self.t_heat = None
         self.cooling_check.setChecked(True)
         self.cooling_check.setDisabled(True)
@@ -61,7 +61,8 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
 
     @QtCore.Slot()
     def started_heating(self):
-        self.about_to_heat = True
+        self.t_heat = (datetime.datetime.now() - self.start_dt).total_seconds()
+        self.cooling_check.setDisabled(False)
 
     @QtCore.Slot()
     def toggle_cursor(self):
@@ -76,11 +77,6 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
     def update_data(self, dt, data):
         sec = (dt - self.start_dt).total_seconds()
         temp, res, _ = data
-
-        if self.about_to_heat:
-            self.about_to_heat = False
-            self.t_heat = sec
-            self.cooling_check.setDisabled(False)
 
         self._data[0].append(sec)
         self._data[1].append(temp)
@@ -231,7 +227,7 @@ if __name__ == "__main__":
         # time.sleep(0.1)
 
     win.started_heating()
-    for i in range(1000, -1, -1):
+    for i in range(10, -1, -1):
         win.update_data(datetime.datetime.now(), sampledata(i))
         # time.sleep(0.1)
 
