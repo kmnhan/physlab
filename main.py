@@ -32,13 +32,23 @@ except:  # noqa: E722
 #     (100, 275): ("2", 40, 40, 40),
 #     (275, np.inf): ("2", 40, 60, 40),
 # }  #: Heater and PID parameters for each temperature range
+# HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
+#     # (0, 9): ("1", 100, 40, 40),
+#     # (9, 17): ("1", 70, 35, 30),
+#     (0, 9): ("1", 30, 40, 40),
+#     (9, 17): ("1", 32, 35, 30),
+#     (17, 30): ("2", 32, 35, 30),
+#     (30, 75): ("2", 35, 40, 40),
+#     (75, 150): ("2", 40, 40, 40),
+#     (150, 275): ("2", 40, 50, 40),
+#     (275, np.inf): ("2", 40, 70, 40),
+# }  #: Heater and PID parameters for each temperature range
 HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
     # (0, 9): ("1", 100, 40, 40),
     # (9, 17): ("1", 70, 35, 30),
-    (0, 9): ("1", 30, 40, 40),
-    (9, 17): ("1", 32, 35, 30),
-    (17, 30): ("2", 32, 35, 30),
-    (30, 75): ("2", 35, 40, 40),
+    (0, 18): ("1", 10, 670, 30),
+    (18, 26): ("2", 40, 30, 20),
+    (26, 75): ("2", 100, 30, 20),
     (75, 150): ("2", 40, 40, 40),
     (150, 275): ("2", 40, 50, 40),
     (275, np.inf): ("2", 40, 70, 40),
@@ -149,14 +159,14 @@ def measure(
     def get_krdg() -> float:
         return float(lake.query("KRDG? B").strip())
 
-    def adjust_heater(temperature):
-        if manual:
-            return
-        for temprange, params in HEATER_PARAMETERS.items():
-            if temprange[0] < temperature < temprange[1]:
-                lake.write(f"RANGE 1,{params[0]}")
-                lake.write(f"PID 1,{params[1]},{params[2]},{params[3]}")
-                return
+    # def adjust_heater(temperature):
+    #     if manual:
+    #         return
+    #     for temprange, params in HEATER_PARAMETERS.items():
+    #         if temprange[0] < temperature < temprange[1]:
+    #             lake.write(f"RANGE 1,{params[0]}")
+    #             lake.write(f"PID 1,{params[1]},{params[2]},{params[3]}")
+    #             return
 
     # Keithley 2450 setup
     keithley.write("*RST")
@@ -189,6 +199,14 @@ def measure(
 
     lake.write("*RST")
     lake.write("CSET 1,B,1,0,2")
+
+    for i, (temprange, params) in enumerate(HEATER_PARAMETERS.items()):
+        lake.write(
+            f"ZONE 1,{i+1},{temprange[0]},"
+            f"{params[1]},{params[2]},{params[3]}"
+            f"0, {params[0]}"
+        )
+    lake.write("CMODE 1,2")
 
     temperature = get_krdg()
 
@@ -294,7 +312,7 @@ def measure(
                     updatesignal.emit(
                         now, (temperature, float(resistance), float(current))
                     )
-                adjust_heater(temperature)
+                # adjust_heater(temperature)
 
                 if not manual and np.abs(target - temperature) < 0.5:
                     if t_cool_end is None:
