@@ -254,7 +254,7 @@ def measure(
 
                 res = float(keithley.query("MEAS:VOLT?"))
 
-                if len(q_res) != 2:
+                if len(q_res) == 2:
                     resistance = str(sgn * (q_res[0] - q_res[1]) / 2)
                 else:
                     resistance = "nan"
@@ -273,7 +273,7 @@ def measure(
                 res = float(keithley.query("MEAS:VOLT?"))
                 q_res.append(res)
 
-                if len(q_res) != 3:
+                if len(q_res) == 3:
                     resistance = str(-sgn * (q_res[0] + q_res[2] - 2 * q_res[1]) / 4)
                 else:
                     resistance = "nan"
