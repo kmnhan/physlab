@@ -1,3 +1,4 @@
+import collections
 import csv
 import datetime
 import logging
@@ -8,8 +9,6 @@ import threading
 import time
 
 import numpy as np
-
-# from qcodes.instrument_drivers.Keithley import Keithley2450
 from qtpy import QtCore, QtWidgets, uic
 
 from instrument import RequestHandler
@@ -162,12 +161,13 @@ def measure(
 
     """
     # Connect to GPIB instruments
-    # lake: LakeshoreModel325 = LakeshoreModel325("lake", "GPIB0::12::INSTR")
     lake = RequestHandler("GPIB0::12::INSTR")
     lake.open()
-    # keithley: Keithley2450 = Keithley2450("keithley", "GPIB1::18::INSTR")
+    log.info(f"[Connected to {lake.query('*IDN?').strip()}]")
+
     keithley = RequestHandler("GPIB1::18::INSTR")
     keithley.open()
+    log.info(f"[Connected to {keithley.query('*IDN?').strip()}]")
 
     def get_krdg() -> float:
         return float(lake.query("KRDG? B").strip())
@@ -189,11 +189,15 @@ def measure(
         keithley.write("SENS:VOLT:OCOM ON")
         keithley.write("SENS:VOLT:NPLC 4")
     elif mode == 1:  # current-reversal method
-        keithley.write("SENS:VOLT:OCOM ON")
-        keithley.write("SENS:VOLT:NPLC 1.5")
-    elif mode == 2:  # delta method
+        q_res = collections.deque(maxlen=2)
+        q_temp = collections.deque(maxlen=2)
         keithley.write("SENS:VOLT:OCOM OFF")
-        keithley.write("SENS:VOLT:NPLC 1.5")
+        keithley.write("SENS:VOLT:NPLC 4")
+    elif mode == 2:  # delta method
+        q_res = collections.deque(maxlen=3)
+        q_temp = collections.deque(maxlen=3)
+        keithley.write("SENS:VOLT:OCOM OFF")
+        keithley.write("SENS:VOLT:NPLC 4")
 
     keithley.write("SOUR:FUNC CURR")
     keithley.write("SOUR:CURR:RANG:AUTO ON")
@@ -244,33 +248,35 @@ def measure(
                 resistance: str = keithley.query("MEAS:VOLT?").strip()
 
             elif mode == 1:  # current-reversal method
-                rp = float(keithley.query("MEAS:VOLT?"))
+                sgn = np.sign(float(keithley.query("SOUR:CURR?")))
 
-                keithley.write(f"SOUR:CURR -{curr:.15f}")
+                keithley.write(f"SOUR:CURR {-sgn * curr:.15f}")
 
-                rm = float(keithley.query("MEAS:VOLT?"))
+                res = float(keithley.query("MEAS:VOLT?"))
 
-                keithley.write(f"SOUR:CURR {curr:.15f}")
+                if len(q_res) != 2:
+                    resistance = str(sgn * (q_res[0] - q_res[1]) / 2)
+                else:
+                    resistance = "nan"
 
-                resistance = str((abs(rp) + abs(rm)) / 2)
+                # rp = float(keithley.query("MEAS:VOLT?"))
+                # keithley.write(f"SOUR:CURR -{curr:.15f}")
+                # rm = float(keithley.query("MEAS:VOLT?"))
+                # keithley.write(f"SOUR:CURR {curr:.15f}")
+                # resistance = str((abs(rp) + abs(rm)) / 2)
 
             elif mode == 2:  # delta method
                 sgn = np.sign(float(keithley.query("SOUR:CURR?")))
 
                 keithley.write(f"SOUR:CURR {-sgn * curr:.15f}")
 
-                r1 = float(keithley.query("MEAS:VOLT?"))
+                res = float(keithley.query("MEAS:VOLT?"))
+                q_res.append(res)
 
-                keithley.write(f"SOUR:CURR {sgn * curr:.15f}")
-
-                r2 = float(keithley.query("MEAS:VOLT?"))
-
-                keithley.write(f"SOUR:CURR {-sgn * curr:.15f}")
-
-                r3 = float(keithley.query("MEAS:VOLT?"))
-
-                ra, rb = (r1 - r2) / 2, (r3 - r2) / 2
-                resistance = str(abs(ra - rb) / 2)
+                if len(q_res) != 3:
+                    resistance = str(-sgn * (q_res[0] + q_res[2] - 2 * q_res[1]) / 4)
+                else:
+                    resistance = "nan"
 
             now = now + (datetime.datetime.now() - now) / 2
 
@@ -279,21 +285,28 @@ def measure(
 
             current: str = keithley.query("SOUR:CURR?").strip()
 
-            writer.append(now, [str(temperature), resistance, current])
-            log.info(
-                f"  {now}  "
-                f"|  {temperature:>7.3f} K  "
-                f"|  {float(resistance):>5.5f} Ω  "
-                f"|  {float(current)*1e+3:.6f} mA  "
-            )
-            if updatesignal is not None:
-                updatesignal.emit(now, (temperature, float(resistance), float(current)))
-            adjust_heater(temperature)
+            if mode != 0:
+                q_temp.append(temperature)
+                temperature = sum(q_temp) / len(q_temp)
 
-            if np.abs(target - temperature) < 0.5:
-                lake.write("PID 1,30,40,40")
-                lake.write("RAMP 1,1,1")  # why?
-                break
+            if resistance != "nan":
+                writer.append(now, [str(temperature), resistance, current])
+                log.info(
+                    f"  {now}  "
+                    f"|  {temperature:>7.3f} K  "
+                    f"|  {float(resistance):>5.5f} Ω  "
+                    f"|  {float(current)*1e+3:.6f} mA  "
+                )
+                if updatesignal is not None:
+                    updatesignal.emit(
+                        now, (temperature, float(resistance), float(current))
+                    )
+                adjust_heater(temperature)
+
+                if np.abs(target - temperature) < 0.5:
+                    lake.write("PID 1,30,40,40")
+                    lake.write("RAMP 1,1,1")  # why?
+                    break
 
             if abortflag is not None:
                 if abortflag.is_set():

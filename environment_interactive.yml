@@ -4,7 +4,6 @@ channels:
 dependencies:
   - python
   - pip
-  - qcodes>=0.43.0
   - pyvisa
   - numpy
   - xarray
