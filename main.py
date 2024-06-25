@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import collections
 import csv
 import datetime
@@ -60,6 +62,7 @@ def measure(
     updatesignal: QtCore.SignalInstance | None = None,
     heatingsignal: QtCore.SignalInstance | None = None,
     abortflag: threading.Event | None = None,
+    commandwidget: CommandWidget | None = None,
 ):
     """Loop for the R-T measurement.
 
@@ -100,10 +103,14 @@ def measure(
         The loop is aborted when this event is set, by default None
 
     """
+    commandwidget.close_instrument()
+
     # Connect to GPIB instruments
     lake = RequestHandler("GPIB0::12::INSTR")
     lake.open()
     log.info(f"[Connected to {lake.query('*IDN?').strip()}]")
+
+    commandwidget.set_instrument(lake)
 
     keithley = RequestHandler("GPIB1::18::INSTR", interval_ms=0)
     keithley.open()
@@ -277,7 +284,7 @@ def measure(
     # Stop measurement and close instruments
     keithley.write(":OUTP OFF; :SOUR:CURR 0")
     keithley.close()
-    lake.close()
+    commandwidget.close_instrument()
 
 
 class WritingProc(multiprocessing.Process):
@@ -359,6 +366,7 @@ class MeasureThread(QtCore.QThread):
         super().__init__()
         self.aborted = threading.Event()
         self.measure_params = None
+        self.command_widget = None
 
     def run(self):
         self.sigStarted.emit()
@@ -368,8 +376,53 @@ class MeasureThread(QtCore.QThread):
             updatesignal=self.sigUpdated,
             heatingsignal=self.sigHeating,
             abortflag=self.aborted,
+            commandwidget=self.command_widget,
         )
         self.sigFinished.emit()
+
+
+class CommandWidget(*uic.loadUiType("command.ui")):
+    sigWrite = QtCore.Signal(str)
+    sigQuery = QtCore.Signal(str)
+    sigReply = QtCore.Signal(str, object)
+
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
+
+        self.write_btn.clicked.connect(self.write)
+        self.query_btn.clicked.connect(self.query)
+
+        self.sigReply.connect(self.set_reply)
+        self.instrument: RequestHandler | None = None
+
+    @property
+    def input(self) -> str:
+        return self.text_in.toPlainText().strip()
+
+    def set_instrument(self, instrument: RequestHandler):
+        self.instrument = instrument
+
+    def close_instrument(self):
+        if self.instrument:
+            self.instrument.close()
+            self.instrument = None
+
+    @QtCore.Slot(str, object)
+    def set_reply(self, message: str, _: datetime.datetime):
+        self.text_out.setPlainText(message)
+
+    @QtCore.Slot()
+    def write(self):
+        if not self.instrument:
+            self.set_instrument(RequestHandler("GPIB0::12::INSTR"))
+        self.instrument.write(self.input)
+
+    @QtCore.Slot()
+    def query(self):
+        if not self.instrument:
+            self.set_instrument(RequestHandler("GPIB0::12::INSTR"))
+        self.sigReply.emit(self.instrument.query(self.input), datetime.datetime.now())
 
 
 class MainWindow(*uic.loadUiType("main.ui")):
@@ -382,6 +435,9 @@ class MainWindow(*uic.loadUiType("main.ui")):
 
         self.plot = PlotWindow()
         self.actionplot.triggered.connect(self.toggle_plot)
+
+        self.command_widget = CommandWidget()
+        self.actioncommand.triggered.connect(self.command_widget.show)
 
         self.measurement_thread = MeasureThread()
         self.measurement_thread.sigStarted.connect(self.started)
@@ -516,6 +572,8 @@ class MainWindow(*uic.loadUiType("main.ui")):
     def closeEvent(self, *args, **kwargs):
         self.abort_measurement()
         self.plot.close()
+        self.command_widget.close_instrument()
+        self.command_widget.close()
         super().closeEvent(*args, **kwargs)
 
 
