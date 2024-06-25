@@ -243,7 +243,14 @@
     <addaction name="actionplot"/>
     <addaction name="actioncommand"/>
    </widget>
+   <widget class="QMenu" name="menuEdit">
+    <property name="title">
+     <string>Edit</string>
+    </property>
+    <addaction name="actionManual_temp_control"/>
+   </widget>
    <addaction name="menuView"/>
+   <addaction name="menuEdit"/>
   </widget>
   <action name="actionplot">
    <property name="text">
@@ -253,6 +260,11 @@
   <action name="actioncommand">
    <property name="text">
     <string>Lakeshore Command</string>
+   </property>
+  </action>
+  <action name="actionManual_temp_control">
+   <property name="text">
+    <string>Manual Control</string>
    </property>
   </action>
  </widget>

@@ -59,6 +59,7 @@ def measure(
     delay: float,
     delta: float,
     mode: Literal[0, 1, 2],
+    manual: bool = False,
     updatesignal: QtCore.SignalInstance | None = None,
     heatingsignal: QtCore.SignalInstance | None = None,
     abortflag: threading.Event | None = None,
@@ -94,6 +95,10 @@ def measure(
     mode
         One of 0, 1, 2, each corresponding to the offset-compensated ohms method,
         current reversal method, and the delta method.
+    manual : optional
+        If True, the heater is controlled manually, and the program only does the
+        temperature-resistance logging. `tempstart`, `tempend`, `coolrate`, and `delay`
+        are ignored, by default False
     updatesignal : optional
         Emits the time as a datetime object and the data as a 3-tuple of floats, by
         default None
@@ -120,6 +125,8 @@ def measure(
         return float(lake.query("KRDG? B").strip())
 
     def adjust_heater(temperature):
+        if manual:
+            return
         for temprange, params in HEATER_PARAMETERS.items():
             if temprange[0] < temperature < temprange[1]:
                 lake.write(f"RANGE 1,{params[0]}")
@@ -152,10 +159,12 @@ def measure(
     keithley.write(f"SOUR:CURR {curr:.15f}")
 
     # LakeShore325 temperature controller
-    lake.write("OUTMODE 1,1,2,1")
+    # if not manual_control:
+    # lake.write("OUTMODE 1,1,2,1")  # not applicable for 325
+
     temperature = get_krdg()
 
-    if np.abs(temperature - tempstart) > 10:
+    if not manual and np.abs(temperature - tempstart) > 10:
         lake.write("RAMP 1,1,0")
         lake.write(f"SETP 1,{temperature + 1.0:.2f}")
         time.sleep(2)
@@ -184,9 +193,10 @@ def measure(
             # Add nan row before heating
             writer.append(datetime.datetime.now(), ["nan"] * 3)
 
-        log.info(f"[Set temperature {target} K ]")
-        lake.write(f"RAMP 1,1,{temprate}")
-        lake.write(f"SETP 1,{target:.2f}")
+        if not manual:
+            log.info(f"[Set temperature {target} K ]")
+            lake.write(f"RAMP 1,1,{temprate}")
+            lake.write(f"SETP 1,{target:.2f}")
         # adjust_heater(300.0)
 
         while True:
@@ -443,6 +453,8 @@ class MainWindow(*uic.loadUiType("main.ui")):
         self.command_widget = CommandWidget()
         self.actioncommand.triggered.connect(self.command_widget.show)
 
+        self.actionmanual.toggled.connect(self.toggle_manual)
+
         self.measurement_thread = MeasureThread()
         self.measurement_thread.sigStarted.connect(self.started)
         self.measurement_thread.sigStarted.connect(self.plot.started)
@@ -460,10 +472,22 @@ class MainWindow(*uic.loadUiType("main.ui")):
             "coolrate": self.spin_rate.value(),
             "heatrate": self.spin_rateh.value(),
             "curr": self.spin_curr.value() * 1e-3,
+            "manual": self.actionmanual.isChecked(),
             "delay": self.spin_delay.value(),
             "delta": self.spin_delta.value(),
             "mode": self.mode_combo.currentIndex(),
         }
+
+    @QtCore.Slot()
+    def toggle_manual(self):
+        for w in (
+            self.spin_start,
+            self.spin_end,
+            self.spin_rate,
+            self.spin_rateh,
+            self.spin_delay,
+        ):
+            w.setDisabled(self.actionmanual.isChecked())
 
     @QtCore.Slot()
     def toggle_measurement(self):
