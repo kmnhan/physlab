@@ -159,6 +159,7 @@ def measure(
     # Connect to GPIB instruments
     # lake: LakeshoreModel325 = LakeshoreModel325("lake", "GPIB0::12::INSTR")
     lake = RequestHandler("GPIB0::12::INSTR")
+    lake.open()
     keithley: Keithley2450 = Keithley2450("keithley", "GPIB1::18::INSTR")
 
     def get_krdg() -> float:
