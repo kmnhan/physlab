@@ -33,14 +33,13 @@ except:  # noqa: E722
 #     (275, np.inf): ("2", 40, 60, 40),
 # }
 HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
-    # (0, 9): ("1", 100, 40, 40),
-    # (9, 17): ("1", 70, 35, 30),
     (0, 18): ("1", 10, 670, 0),
-    (18, 26): ("2", 40, 30, 0),
+    (18, 22): ("2", 10, 670, 0),
+    (22, 26): ("2", 40, 30, 0),
     (26, 75): ("2", 100, 30, 0),
-    (75, 150): ("2", 40, 40, 0),
-    (150, 275): ("2", 40, 50, 0),
-    (275, 350): ("2", 40, 70, 0),
+    (75, 150): ("2", 175, 30, 0),
+    (150, 250): ("2", 250, 31, 0),
+    (250, 350): ("2", 300, 33, 0),
 }  #: Heater and PID parameters for each temperature range
 
 log = logging.getLogger(__name__)
@@ -221,10 +220,10 @@ def measure(
                 q_res.append(float(resistance))
                 if len(q_res) == q_res.maxlen:
                     if mode == 1:  # Current-reversal method
-                        resistance = str(-sgn * (q_res[1] - q_res[0]) / 2)
+                        resistance = str(sgn * (q_res[0] - q_res[1]) / 2)
                     elif mode == 2:  # Delta method
                         resistance = str(
-                            -sgn * (q_res[0] - 2 * q_res[1] + q_res[2]) / 4
+                            sgn * (q_res[0] + q_res[2] - 2 * q_res[1]) / 4
                         )
                 else:
                     # Current reversal and delta method require 2 or 3 measurements
