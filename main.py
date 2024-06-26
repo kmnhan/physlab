@@ -50,29 +50,6 @@ handler.setFormatter(logging.Formatter("%(message)s"))
 log.addHandler(handler)
 
 
-def communicate(handler, queue):
-    if not queue.empty():
-        message, replysignal, is_query = queue.get()
-
-        if not is_query:  # Write only
-            try:
-                handler.write(message)
-            except (pyvisa.VisaIOError, pyvisa.InvalidSession):
-                log.exception("Error writing command")
-            else:
-                log.info(f"[<- {message.strip()}]")
-                replysignal.emit("Command sent.", datetime.datetime.now())
-        else:  # Query
-            try:
-                rep = handler.query(message)
-            except (pyvisa.VisaIOError, pyvisa.InvalidSession):
-                log.exception("Error querying command")
-            else:
-                log.info(f"[<- {message.strip()}]")
-                log.info(f"[-> {rep.strip()}]")
-                replysignal.emit(rep, datetime.datetime.now())
-
-
 def measure(
     filename: os.PathLike,
     tempstart: float,
@@ -183,9 +160,8 @@ def measure(
 
     temperature = get_krdg()
 
-    # cool_time = np.abs(temperature - tempstart) / coolrate
-    # heat_time = np.abs(tempstart - tempend) / heatrate
-    #
+    _log_estimated_time(temperature, tempstart, tempend, coolrate, heatrate, delay)
+
     if not manual and np.abs(temperature - tempstart) > 10:
         # If current temperature is far from the start temperature, setpoint to current
         # temperature first before measuring
@@ -202,6 +178,7 @@ def measure(
     # Start measurement
     keithley.write("OUTP ON")
 
+    log.info("[Starting measurement]")
     for k in range(2):
         # k = 0 : measure while going to the Start Temperature
         # k = 1 : measure while going to the End Temperature.
@@ -298,6 +275,96 @@ def measure(
     keithley.write(":OUTP OFF; :SOUR:CURR 0")
     keithley.close()
     lake.close()
+
+
+def communicate(handler: RequestHandler, queue: collections.deque):
+    if not queue.empty():
+        message, replysignal, is_query = queue.get()
+
+        if not is_query:  # Write only
+            try:
+                handler.write(message)
+            except (pyvisa.VisaIOError, pyvisa.InvalidSession):
+                log.exception("Error writing command")
+            else:
+                log.info(f"[<- {message.strip()}]")
+                replysignal.emit("Command sent.", datetime.datetime.now())
+        else:  # Query
+            try:
+                rep = handler.query(message)
+            except (pyvisa.VisaIOError, pyvisa.InvalidSession):
+                log.exception("Error querying command")
+            else:
+                log.info(f"[<- {message.strip()}]")
+                log.info(f"[-> {rep.strip()}]")
+                replysignal.emit(rep, datetime.datetime.now())
+
+
+def _format_minutes(minutes: float) -> str:
+    hours, remainder = divmod(minutes * 60, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    out = []
+
+    hours, minutes, seconds = map(int, (hours, minutes, seconds))
+    if hours >= 1:
+        out.append(f"{hours} hour")
+        if hours != 1:
+            out[-1] += "s"
+    if minutes >= 1:
+        out.append(f"{minutes} minute")
+        if minutes != 1:
+            out[-1] += "s"
+    if seconds >= 1:
+        out.append(f"{seconds} second")
+        if seconds != 1:
+            out[-1] += "s"
+
+    if len(out) > 1:
+        if len(out) == 3:
+            out[0] = out[0] + ","
+        out.insert(-1, "and")
+
+    return " ".join(out)
+
+
+def _format_time(dt: datetime.datetime) -> str:
+    return dt.strftime("%X")
+
+
+def _log_estimated_time(
+    temperature: float,
+    tempstart: float,
+    tempend: float,
+    coolrate: float,
+    heatrate: float,
+    delay: float,
+) -> None:
+    if tempstart < 160.0 < temperature:
+        time_elapsed_160 = np.abs(160 - temperature) / coolrate
+        time_160 = datetime.datetime.now() + datetime.timedelta(
+            seconds=time_elapsed_160 * 60
+        )
+        log.info(
+            f"[Est. time to 160 K: {_format_minutes(time_elapsed_160)} "
+            f"({_format_time(time_160)})]"
+        )
+
+    cool_time = np.abs(temperature - tempstart) / coolrate
+    heat_time = np.abs(tempstart - tempend) / heatrate
+
+    start_time = datetime.datetime.now() + datetime.timedelta(seconds=3)
+    cool_end = start_time + datetime.timedelta(seconds=cool_time * 60)
+    heat_start = cool_end + datetime.timedelta(seconds=delay * 60)
+    heat_end = heat_start + datetime.timedelta(seconds=heat_time * 60)
+
+    cool_time, delay, heat_time, total_time = map(
+        _format_minutes, (cool_time, delay, heat_time, cool_time + delay + heat_time)
+    )
+    cool_end, heat_start, heat_end = map(_format_time, (cool_end, heat_start, heat_end))
+
+    log.info(f"[Est. time to {tempstart}: {cool_time} ({cool_end})]")
+    log.info(f"[Wait time {delay} ({heat_start})]")
+    log.info(f"[Est. time to T2: {heat_time}, Total {total_time} ({heat_end})]")
 
 
 class WritingProc(multiprocessing.Process):
@@ -499,7 +566,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
         self.plot = PlotWindow()
         self.actionplot.triggered.connect(self.toggle_plot)
 
-        self.actionmanual.toggled.connect(self.toggle_manual)
+        self.actionmanual.toggled.connect(self.manual_toggled)
 
         self.measurement_thread = MeasureThread()
         self.measurement_thread.sigStarted.connect(self.started)
@@ -528,7 +595,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
         }
 
     @QtCore.Slot()
-    def toggle_manual(self):
+    def manual_toggled(self):
         for w in (
             self.spin_start,
             self.spin_end,
@@ -607,6 +674,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
             self.spin_rate,
             self.spin_rateh,
             self.mode_combo,
+            self.actionmanual,
         ):
             w.setDisabled(True)
         self.start_btn.setText("Abort Measurement")
@@ -630,10 +698,12 @@ class MainWindow(*uic.loadUiType("main.ui")):
             self.spin_rate,
             self.spin_rateh,
             self.mode_combo,
+            self.actionmanual,
         ):
             w.setDisabled(False)
         self.start_btn.setText("Start Measurement")
         self.statusBar().setVisible(False)
+        self.manual_toggled()
 
     @QtCore.Slot()
     def toggle_plot(self):
