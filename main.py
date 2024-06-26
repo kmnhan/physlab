@@ -31,27 +31,16 @@ except:  # noqa: E722
 #     (15, 100): ("2", 35, 40, 40),
 #     (100, 275): ("2", 40, 40, 40),
 #     (275, np.inf): ("2", 40, 60, 40),
-# }  #: Heater and PID parameters for each temperature range
-# HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
-#     # (0, 9): ("1", 100, 40, 40),
-#     # (9, 17): ("1", 70, 35, 30),
-#     (0, 9): ("1", 30, 40, 40),
-#     (9, 17): ("1", 32, 35, 30),
-#     (17, 30): ("2", 32, 35, 30),
-#     (30, 75): ("2", 35, 40, 40),
-#     (75, 150): ("2", 40, 40, 40),
-#     (150, 275): ("2", 40, 50, 40),
-#     (275, 350): ("2", 40, 70, 40),
-# }  #: Heater and PID parameters for each temperature range
+# }
 HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
     # (0, 9): ("1", 100, 40, 40),
     # (9, 17): ("1", 70, 35, 30),
-    (0, 18): ("1", 10, 670, 30),
-    (18, 26): ("2", 40, 30, 20),
-    (26, 75): ("2", 100, 30, 20),
-    (75, 150): ("2", 40, 40, 40),
-    (150, 275): ("2", 40, 50, 40),
-    (275, 350): ("2", 40, 70, 40),
+    (0, 18): ("1", 10, 670, 0),
+    (18, 26): ("2", 40, 30, 0),
+    (26, 75): ("2", 100, 30, 0),
+    (75, 150): ("2", 40, 40, 0),
+    (150, 275): ("2", 40, 50, 0),
+    (275, 350): ("2", 40, 70, 0),
 }  #: Heater and PID parameters for each temperature range
 
 log = logging.getLogger(__name__)
@@ -92,7 +81,7 @@ def measure(
     heatrate: float,
     curr: float,
     delay: float,
-    delta: float,
+    nplc: float,
     mode: Literal[0, 1, 2],
     manual: bool = False,
     updatesignal: QtCore.SignalInstance | None = None,
@@ -122,11 +111,9 @@ def measure(
     delay
         Delay in minutes after reaching `tempstart` before starting the ramp to
         `tempend`.
-    delta
-        Interval between each measurement loop in seconds. Note that the real logging
-        interval is larger than this value, and depends on the settings of the
-        sourcemeter such as NPLC and count. There is no particular reason to set this to
-        a value other than zero, but it is left as an option.
+    nplc
+        Number of power line cycles for the Keithley 2450. Values under 1 are not
+        recommended. Larger values increase the measurement time but reduce noise.
     mode
         One of 0, 1, 2, each corresponding to the offset-compensated ohms method,
         current reversal method, and the delta method.
@@ -159,46 +146,28 @@ def measure(
     def get_krdg() -> float:
         return float(lake.query("KRDG? B").strip())
 
-    # def adjust_heater(temperature):
-    #     if manual:
-    #         return
-    #     for temprange, params in HEATER_PARAMETERS.items():
-    #         if temprange[0] < temperature < temprange[1]:
-    #             lake.write(f"RANGE 1,{params[0]}")
-    #             lake.write(f"PID 1,{params[1]},{params[2]},{params[3]}")
-    #             return
-
     # Keithley 2450 setup
     keithley.write("*RST")
-    keithley.write('SENS:FUNC "VOLT"')
+    keithley.write(':SENS:FUNC "VOLT"')
     keithley.write("SENS:VOLT:RSEN ON")  # 4-wire mode
-    keithley.write("SENS:VOLT:UNIT OHM")
-    keithley.write("SENS:VOLT:RANG:AUTO ON")
+    keithley.write(":SENS:VOLT:UNIT OHM; VOLT:RANG:AUTO ON")
     if mode == 0:  # offset-compensated ohms method
-        keithley.write("SENS:VOLT:OCOM ON")
-        keithley.write("SENS:VOLT:NPLC 2")
+        keithley.write(f":SENS:VOLT:OCOM ON; VOLT:NPLC {nplc:.2f}")
     elif mode == 1:  # current-reversal method
         q_res = collections.deque(maxlen=2)
         q_temp = collections.deque(maxlen=2)
-        keithley.write("SENS:VOLT:OCOM OFF")
-        keithley.write("SENS:VOLT:NPLC 2")
+        keithley.write(f":SENS:VOLT:OCOM OFF; VOLT:NPLC {nplc:.2f}")
     elif mode == 2:  # delta method
         q_res = collections.deque(maxlen=3)
         q_temp = collections.deque(maxlen=3)
-        keithley.write("SENS:VOLT:OCOM OFF")
-        keithley.write("SENS:VOLT:NPLC 2")
+        keithley.write(f":SENS:VOLT:OCOM OFF; VOLT:NPLC {nplc:.2f}")
 
     keithley.write("SOUR:FUNC CURR")
-    keithley.write("SOUR:CURR:RANG:AUTO ON")
-    keithley.write("SOUR:CURR:VLIM 10")
-    keithley.write(f"SOUR:CURR {curr:.15f}")
+    keithley.write(f":SOUR:CURR:RANG:AUTO ON; CURR:VLIM 10; CURR {curr:.15f}")
 
     # LakeShore325 temperature controller
-    # if not manual_control:
-    # lake.write("OUTMODE 1,1,2,1")  # not applicable for 325
-
     lake.write("*RST")
-    lake.write("CSET 1,B,1,0,2")
+    lake.write("CSET 1,B,1,0,2")  # Set loop 1 to control TB
 
     for i, (temprange, params) in enumerate(HEATER_PARAMETERS.items()):
         lake.write(
@@ -210,9 +179,13 @@ def measure(
 
     temperature = get_krdg()
 
+    # cool_time = np.abs(temperature - tempstart) / coolrate
+    # heat_time = np.abs(tempstart - tempend) / heatrate
+    #
     if not manual and np.abs(temperature - tempstart) > 10:
-        lake.write("RAMP 1,1,0")
-        lake.write(f"SETP 1,{temperature + 1.0:.2f}")
+        # If current temperature is far from the start temperature, setpoint to current
+        # temperature first before measuring
+        lake.write(f"RAMP 1,1,0; SETP 1,{temperature:.2f}")
         time.sleep(2)
 
     # Start data writer
@@ -229,11 +202,9 @@ def measure(
         # k = 0 : measure while going to the Start Temperature
         # k = 1 : measure while going to the End Temperature.
         if k == 0:
-            target = tempstart
-            temprate = coolrate
+            target, temprate = tempstart, coolrate
         elif k == 1:
-            target = tempend
-            temprate = heatrate
+            target, temprate = tempend, heatrate
             if heatingsignal is not None:
                 heatingsignal.emit()
             # Add nan row before heating
@@ -241,9 +212,7 @@ def measure(
 
         if not manual:
             log.info(f"[Set temperature {target} K ]")
-            lake.write(f"RAMP 1,1,{temprate}")
-            lake.write(f"SETP 1,{target:.2f}")
-        # adjust_heater(300.0)
+            lake.write(f"RAMP 1,1,{temprate}; SETP 1,{target:.2f}")
 
         while True:
             flush_commands()
@@ -253,40 +222,13 @@ def measure(
             now: datetime.datetime = datetime.datetime.now()
             temperature: float = get_krdg()
 
-            if mode == 0:  # Offset-compensated ohms method
-                # resistance: str = keithley.query("MEAS:VOLT?").strip()
-                msg: str = keithley.query(":MEAS:VOLT?; :SOUR:CURR?")
-                resistance, current = msg.split(";")
-
-            elif mode == 1:  # Current-reversal method
+            if mode != 0:
+                # Reverse current for current-reversal and delta methods
                 sgn = np.sign(float(keithley.query(":SOUR:CURR?")))
+                keithley.write(f":SOUR:CURR {-sgn * curr:.15f}")
 
-                # keithley.write(f"SOUR:CURR {-sgn * curr:.15f}")
-                msg = keithley.query(
-                    f":SOUR:CURR {-sgn * curr:.15f}; :MEAS:VOLT?; :SOUR:CURR?"
-                )
-                res, current = msg.split(";")
-
-                q_res.append(float(res))
-                if len(q_res) == 2:
-                    resistance = str(-sgn * (q_res[1] - q_res[0]) / 2)
-                else:
-                    resistance = "nan"
-
-            elif mode == 2:  # Delta method
-                sgn = np.sign(float(keithley.query("SOUR:CURR?")))
-
-                # keithley.write(f"SOUR:CURR {-sgn * curr:.15f}")
-                msg = keithley.query(
-                    f":SOUR:CURR {-sgn * curr:.15f}; :MEAS:VOLT?; :SOUR:CURR?"
-                )
-                res, current = msg.split(";")
-
-                q_res.append(float(res))
-                if len(q_res) == 3:
-                    resistance = str(-sgn * (q_res[0] - 2 * q_res[1] + q_res[2]) / 4)
-                else:
-                    resistance = "nan"
+            msg: str = keithley.query(":MEAS:VOLT?; :SOUR:CURR?")
+            resistance, current = msg.split(";")
 
             now = now + (datetime.datetime.now() - now) / 2
             temperature = (temperature + get_krdg()) / 2
@@ -294,6 +236,20 @@ def measure(
             flush_commands()
 
             if mode != 0:
+                # Calculate resistance
+                q_res.append(float(resistance))
+                if len(q_res) == q_res.maxlen:
+                    if mode == 1:  # Current-reversal method
+                        resistance = str(-sgn * (q_res[1] - q_res[0]) / 2)
+                    elif mode == 2:  # Delta method
+                        resistance = str(
+                            -sgn * (q_res[0] - 2 * q_res[1] + q_res[2]) / 4
+                        )
+                else:
+                    # Current reversal and delta method require 2 or 3 measurements
+                    resistance = "nan"
+
+                # Take moving average of temperature
                 q_temp.append(float(temperature))
                 temperature = sum(q_temp) / len(q_temp)
 
@@ -312,9 +268,8 @@ def measure(
                     updatesignal.emit(
                         now, (temperature, float(resistance), float(current))
                     )
-                # adjust_heater(temperature)
 
-                if not manual and np.abs(target - temperature) < 0.5:
+                if not manual and np.abs(target - temperature) < 0.3:
                     if t_cool_end is None:
                         t_cool_end = time.perf_counter()
 
@@ -322,16 +277,10 @@ def measure(
 
                     if time_left >= delay * 60:
                         break  # Exit loop
-                # else:
-                # if t_cool_end is not None:
-                #     # Overshoot, reset timer
-                #     t_cool_end = None
 
             if abortflag is not None:
                 if abortflag.is_set():
                     break
-
-            time.sleep(delta)
 
         if abortflag is not None:
             if abortflag.is_set():
@@ -570,7 +519,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
             "curr": self.spin_curr.value() * 1e-3,
             "manual": self.actionmanual.isChecked(),
             "delay": self.spin_delay.value(),
-            "delta": self.spin_delta.value(),
+            "nplc": self.spin_delta.value(),
             "mode": self.mode_combo.currentIndex(),
         }
 
@@ -610,21 +559,28 @@ class MainWindow(*uic.loadUiType("main.ui")):
             )
             return
 
-        ret = QtWidgets.QMessageBox.question(
-            self,
-            "Confirm Parameters",
-            "\n".join(
+        if params["manual"]:
+            msg = "\n".join(
                 [
                     f"Save to {params['filename']}",
-                    f"Low {params['tempstart']} K",
-                    f"High {params['tempend']} K",
-                    f"Cool {params['coolrate']} K/min",
-                    f"Heat {params['heatrate']} K/min",
+                    "Manual Control",
                     f"Current {params['curr']} A",
-                    f"Every {params['delta']} s",
+                    f"NPLC {params['nplc']}",
                 ]
-            ),
-        )
+            )
+        else:
+            msg = "\n".join(
+                [
+                    f"Save to {params['filename']}",
+                    f"[1] Ramp to {params['tempstart']} K, {params['coolrate']} K/min",
+                    f"[2] Wait {params['delay']} min",
+                    f"[3] Ramp to {params['tempend']} K, {params['heatrate']} K/min",
+                    f"Current {params['curr']} A",
+                    f"NPLC {params['nplc']}",
+                ]
+            )
+
+        ret = QtWidgets.QMessageBox.question(self, "Confirm Parameters", msg)
         if ret == QtWidgets.QMessageBox.Yes:
             self.measurement_thread.measure_params = self.measurement_parameters
             self.measurement_thread.start()
