@@ -148,22 +148,26 @@ def measure(
 
     # Keithley 2450 setup
     keithley.write("*RST")
-    keithley.write(':SENS:FUNC "VOLT"')
+    keithley.write('SENS:FUNC "VOLT"')
     keithley.write("SENS:VOLT:RSEN ON")  # 4-wire mode
-    keithley.write(":SENS:VOLT:UNIT OHM; VOLT:RANG:AUTO ON")
+    keithley.write("SENS:VOLT:UNIT OHM")
+    keithley.write("SENS:VOLT:RANG:AUTO ON")
     if mode == 0:  # offset-compensated ohms method
-        keithley.write(f":SENS:VOLT:OCOM ON; VOLT:NPLC {nplc:.2f}")
+        keithley.write("SENS:VOLT:OCOM ON")
     elif mode == 1:  # current-reversal method
         q_res = collections.deque(maxlen=2)
         q_temp = collections.deque(maxlen=2)
-        keithley.write(f":SENS:VOLT:OCOM OFF; VOLT:NPLC {nplc:.2f}")
+        keithley.write("SENS:VOLT:OCOM OFF")
     elif mode == 2:  # delta method
         q_res = collections.deque(maxlen=3)
         q_temp = collections.deque(maxlen=3)
-        keithley.write(f":SENS:VOLT:OCOM OFF; VOLT:NPLC {nplc:.2f}")
+        keithley.write("SENS:VOLT:OCOM OFF")
+    keithley.write(f"SENS:VOLT:NPLC {nplc:.2f}")
 
     keithley.write("SOUR:FUNC CURR")
-    keithley.write(f":SOUR:CURR:RANG:AUTO ON; CURR:VLIM 10; CURR {curr:.15f}")
+    keithley.write("SOUR:CURR:RANG:AUTO ON")
+    keithley.write("SOUR:CURR:VLIM 10")
+    keithley.write(f"SOUR:CURR {curr:.15f}")
 
     # LakeShore325 temperature controller
     lake.write("*RST")
