@@ -372,15 +372,6 @@ def _estimated_time_info(
     offset: float = 0.0,
 ) -> list[str]:
     out = []
-    if tempstart < 160.0 < temperature:
-        time_elapsed_160 = np.abs(160 - temperature) / coolrate
-        time_160 = datetime.datetime.now() + datetime.timedelta(
-            seconds=time_elapsed_160 * 60
-        )
-        out.append(
-            f"Ramp 160 K: {_format_minutes(time_elapsed_160)} "
-            f"({_format_time(time_160)})"
-        )
 
     cool_time = np.abs(temperature - tempstart) / coolrate
     heat_time = np.abs(tempstart - tempend) / heatrate
@@ -395,10 +386,21 @@ def _estimated_time_info(
     )
     cool_end, heat_start, heat_end = map(_format_time, (cool_end, heat_start, heat_end))
 
-    out.append(f"Ramp {int(tempstart)} K: {cool_time} ({cool_end})")
-    out.append(f"Wait: {delay} ({heat_start})")
-    out.append(f"Ramp {int(tempend)}: {heat_time} ({heat_end})")
-    out.append(f"Total: {total_time}")
+    out.append(f"[1] {cool_time} ({cool_end})")
+    out.append(f"[2] {delay} ({heat_start})")
+    out.append(f"[3] {heat_time} ({heat_end})")
+    # out.append(f"Wait: {delay} ({heat_start})")
+    out.append(f"Total {total_time}")
+
+    if tempstart < 160.0 < temperature:
+        time_elapsed_160 = np.abs(160 - temperature) / coolrate
+        time_160 = datetime.datetime.now() + datetime.timedelta(
+            seconds=time_elapsed_160 * 60
+        )
+        out.append(
+            f"Close valve at {_format_time(time_160)} "
+            f"({_format_minutes(time_elapsed_160)} from now)"
+        )
 
     return out
 
@@ -672,9 +674,9 @@ class MainWindow(*uic.loadUiType("main.ui")):
             msg = "\n".join(
                 [
                     f"Save to {params['filename']}",
-                    "Manual Control",
-                    f"Current {params['curr']} A",
+                    f"Source Current {params['curr']} A",
                     f"NPLC {params['nplc']}",
+                    "Manual Control",
                 ]
             )
         else:
@@ -685,13 +687,13 @@ class MainWindow(*uic.loadUiType("main.ui")):
             msg = "\n".join(
                 [
                     f"Save to {params['filename']}",
+                    f"Source Current {params['curr']} A",
+                    f"NPLC {params['nplc']}",
                     f"Current Temperature {temperature:.2f} K",
                     f"[1] Ramp to {params['tempstart']} K, {params['coolrate']} K/min",
                     f"[2] Wait {params['delay']} min",
                     f"[3] Ramp to {params['tempend']} K, {params['heatrate']} K/min",
-                    f"Current {params['curr']} A",
-                    f"NPLC {params['nplc']}\n",
-                    "Estimated Measurement Timeline",
+                    "\nEstimated Measurement Timeline",
                     *_estimated_time_info(
                         temperature,
                         params["tempstart"],
@@ -704,7 +706,9 @@ class MainWindow(*uic.loadUiType("main.ui")):
                 ]
             )
 
-        ret = QtWidgets.QMessageBox.question(self, "Confirm Parameters", msg)
+        ret = QtWidgets.QMessageBox.question(
+            self, "Confirm Measurement Parameters", msg
+        )
         if ret == QtWidgets.QMessageBox.Yes:
             self.measurement_thread.measure_params = self.measurement_parameters
             self.measurement_thread.start()
