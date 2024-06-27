@@ -7,6 +7,48 @@ import xarray as xr
 from qtpy import QtCore, QtGui, QtWidgets, uic
 
 
+class DiscreteInfiniteLine(pg.InfiniteLine):
+    sigDragStarted = QtCore.Signal(object)
+
+    def temp_value(self) -> float:
+        if hasattr(self, "_temp_value"):
+            return self._temp_value
+        else:
+            return self.value()
+
+    def mouseDragEvent(self, ev):
+        if (
+            QtCore.Qt.KeyboardModifier.ControlModifier
+            not in QtWidgets.QApplication.keyboardModifiers()
+        ):
+            if self.movable and ev.button() == QtCore.Qt.MouseButton.LeftButton:
+                if ev.isStart():
+                    self.moving = True
+                    self.cursorOffset = self.pos() - self.mapToParent(
+                        ev.buttonDownPos()
+                    )
+                    self.startPosition = self.pos()
+                    self.sigDragStarted.emit(self)
+                ev.accept()
+
+                if not self.moving:
+                    return
+
+                new_position = self.cursorOffset + self.mapToParent(ev.pos())
+                if self.angle % 180 == 0:
+                    self._temp_value = new_position.y()
+                elif self.angle % 180 == 90:
+                    self._temp_value = new_position.x()
+
+                self.sigDragged.emit(self)
+                if ev.isFinish():
+                    self.moving = False
+                    self.sigPositionChangeFinished.emit(self)
+        else:
+            self.setMouseHover(False)
+            self.plotItem.mouseDragEvent(ev)
+
+
 class PlotWindow(*uic.loadUiType("plotting.ui")):
     def __init__(self):
         super().__init__()
@@ -15,13 +57,14 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
         self.combo.currentIndexChanged.connect(self.update_axes)
         self.bin_spin.valueChanged.connect(self.update_plot)
         self.avg_spin.valueChanged.connect(self.update_plot)
-
+        self.log_res_check.toggled.connect(self.update_axes)
+        self.inv_temp_check.toggled.connect(self.update_axes)
         self.plot_widget.plotItem.vb.setCursor(QtGui.QCursor(QtCore.Qt.CrossCursor))
 
-        self.curve0 = self.plot_widget.plot(pen="c")
-        self.curve1 = self.plot_widget.plot(pen="m")
+        self.curve0: pg.PlotDataItem = self.plot_widget.plot(pen="c")
+        self.curve1: pg.PlotDataItem = self.plot_widget.plot(pen="m")
         self.start_dt = None
-        self.line = pg.InfiniteLine(
+        self.line = DiscreteInfiniteLine(
             angle=90,
             movable=True,
             label="",
@@ -32,7 +75,8 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
                 "fill": (200, 200, 200, 50),
             },
         )
-        self.target = pg.TargetItem(size=5)
+        self.target = pg.TargetItem(size=5, movable=False)
+        self.line.sigDragged.connect(self.cursor_moved)
         self.line.sigPositionChanged.connect(self.cursor_moved)
         self.cursor_check.toggled.connect(self.toggle_cursor)
         self.cursor_check.setChecked(False)
@@ -72,6 +116,7 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
         if self.cursor_check.isChecked():
             xmin, xmax = self.plot_widget.plotItem.viewRange()[0]
             self.line.setValue((xmin + xmax) / 2)
+            self.cursor_moved()
 
     @QtCore.Slot(object, object)
     def update_data(self, dt, data):
@@ -93,6 +138,7 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
         self.plot_widget.setLabel(axis="left", text=self.ylabel)
         self.plot_widget.enableAutoRange()
         self.update_plot()
+        self.cursor_moved()
 
     @QtCore.Slot()
     def update_plot(self):
@@ -112,6 +158,11 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
                 y=y.sel(time=slice(self.t_heat, None)).values,
             )
 
+        if self.combo.currentIndex() != 2:
+            self.plot_widget.plotItem.setLogMode(False, self.log_res_check.isChecked())
+        else:
+            self.plot_widget.plotItem.setLogMode(False, False)
+
     @QtCore.Slot()
     def cursor_moved(self):
         if len(self._data[0]) == 0:
@@ -121,15 +172,34 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
         if self.combo.currentIndex() == 0 and self.t_heat is not None:
             x = x.sel(time=slice(self.t_heat, None))
             y = y.sel(time=slice(self.t_heat, None))
-        x_idx = np.abs(x.values - self.line.value()).argmin()
+        x_idx = np.abs(x.values - self.line.temp_value()).argmin()
         xval, yval = x.values[x_idx], y.values[x_idx]
 
-        self.target.setPos(xval, yval)
-        self.line.label.setText(f"{self.xlabel} {xval:.5g}\n{self.ylabel} {yval:.5g}")
-
+        xv_coord, yv_coord = float(xval), float(yval)
+        if self.curve0.opts["logMode"][0]:
+            xv_coord = np.log10(np.clip(xv_coord, a_min=1e-15, a_max=None))
+        if self.curve0.opts["logMode"][1]:
+            yv_coord = np.log10(np.clip(yv_coord, a_min=1e-15, a_max=None))
+        self.target.setPos(xv_coord, yv_coord)
         self.line.blockSignals(True)
-        self.line.setPos(xval)
+        self.line.setPos(xv_coord)
         self.line.blockSignals(False)
+
+        self.line.label.setText(
+            f"{self.format_value_for_label(self.xlabel, xval)}\n"
+            f"{self.format_value_for_label(self.ylabel, yval)}"
+        )
+
+    @staticmethod
+    def format_value_for_label(label: str, value: float):
+        if label == "Temperature (K)":
+            return f"T = {value:.5g} [K]"
+        elif label == "1/T (1/K)":
+            return f"1/T = {value:.5g} [1/K]\nT = {1/value:.5g} [K]"
+        elif label == "Resistance (Ohm)":
+            return f"R = {value:.5g} [Ω]"
+        elif label == "Time (s)":
+            return f"t = {value:.5g} [s]"
 
     @property
     def dataset(self) -> xr.Dataset:
@@ -152,43 +222,38 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
         ds = self.dataset.dropna("time")
         if self.combo.currentIndex() == 0:
             # R vs T
-            return ds.temp, ds.res
+            if self.inv_temp_check.isChecked():
+                return 1 / ds.temp, ds.res
+            else:
+                return ds.temp, ds.res
         elif self.combo.currentIndex() == 1:
             # R vs t
             return ds.time, ds.res
         elif self.combo.currentIndex() == 2:
             # T vs t
-            return ds.time, ds.temp
+            if self.inv_temp_check.isChecked():
+                return ds.time, 1 / ds.temp
+            else:
+                return ds.time, ds.temp
 
     @property
-    def xdata(self) -> list[float]:
-        if self.combo.currentIndex() == 0:
-            # R-T
-            return self.dataset.temp
+    def temp_label(self) -> str:
+        if self.inv_temp_check.isChecked():
+            return "1/T (1/K)"
         else:
-            # R-t or T-t
-            return self.dataset.time
-
-    @property
-    def ydata(self) -> list[float]:
-        if self.combo.currentIndex() == 2:
-            # T-t
-            return self.dataset.temp
-        else:
-            # R-T or R-t
-            return self.dataset.res
+            return "Temperature (K)"
 
     @property
     def xlabel(self) -> str:
         if self.combo.currentIndex() == 0:
-            return "Temperature (K)"
+            return self.temp_label
         else:
             return "Time (s)"
 
     @property
     def ylabel(self) -> str:
         if self.combo.currentIndex() == 2:
-            return "Temperature (K)"
+            return self.temp_label
         else:
             return "Resistance (Ohm)"
 
