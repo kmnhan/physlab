@@ -177,10 +177,12 @@ def measure(
 
     temperature = get_krdg()
 
-    for s in _estimated_time_info(
-        temperature, tempstart, tempend, coolrate, heatrate, delay, offset=3.0
-    ):
-        log.info(f"[{s}]")
+    if not manual:
+        log.info("[Estimated Measurement Timeline]")
+        for s in _estimated_time_info(
+            temperature, tempstart, tempend, coolrate, heatrate, delay, offset=3.0
+        ):
+            log.info(f"[{s}]")
 
     if not manual and np.abs(temperature - tempstart) > 10:
         # If current temperature is far from the start temperature, setpoint to current
@@ -376,7 +378,7 @@ def _estimated_time_info(
             seconds=time_elapsed_160 * 60
         )
         out.append(
-            f"Est. time to 160 K: {_format_minutes(time_elapsed_160)} "
+            f"Ramp 160 K: {_format_minutes(time_elapsed_160)} "
             f"({_format_time(time_160)})"
         )
 
@@ -393,9 +395,10 @@ def _estimated_time_info(
     )
     cool_end, heat_start, heat_end = map(_format_time, (cool_end, heat_start, heat_end))
 
-    out.append(f"Est. time to {tempstart}: {cool_time} ({cool_end})")
-    out.append(f"Wait time {delay} ({heat_start})")
-    out.append(f"Est. time to {tempend}: {heat_time}, Total {total_time} ({heat_end})")
+    out.append(f"Ramp {int(tempstart)} K: {cool_time} ({cool_end})")
+    out.append(f"Wait: {delay} ({heat_start})")
+    out.append(f"Ramp {int(tempend)}: {heat_time} ({heat_end})")
+    out.append(f"Total: {total_time}")
 
     return out
 
