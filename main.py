@@ -683,17 +683,17 @@ class MainWindow(*uic.loadUiType("main.ui")):
             handler.open()
             temperature = float(handler.query("KRDG? B").strip())
             handler.close()
-            msg = "\n".join(
+            msg = "<br>".join(
                 [
                     f"Save to {params['filename']}",
                     f"Source Current {params['curr']} A",
                     f"NPLC {params['nplc']}",
                     f"Current Temperature {temperature:.2f} K",
-                    "\n<h1>Measurement Steps</h1>",
+                    "<br><h1>Measurement Steps</h1>",
                     f"[1] Ramp to {params['tempstart']} K, {params['coolrate']} K/min",
                     f"[2] Wait {params['delay']} min",
                     f"[3] Ramp to {params['tempend']} K, {params['heatrate']} K/min",
-                    "\nEstimated Measurement Timeline",
+                    "<br>Estimated Measurement Timeline",
                     *_estimated_time_info(
                         temperature,
                         params["tempstart"],
