@@ -688,8 +688,8 @@ class MainWindow(*uic.loadUiType("main.ui")):
                     f"[3] Ramp to {params['tempend']} K, {params['heatrate']} K/min",
                     f"Current {params['curr']} A",
                     f"NPLC {params['nplc']}\n",
-                    "Estimated Measurement Timeline"
-                    * _estimated_time_info(
+                    "Estimated Measurement Timeline",
+                    *_estimated_time_info(
                         temperature,
                         params["tempstart"],
                         params["tempend"],
