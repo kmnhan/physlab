@@ -226,7 +226,7 @@ def measure(
             temperature: float = get_krdg()
 
             if mode == 0:
-                resistance, current = keithley.query(":MEAS:VOLT?; :SOUR:CURR?").split(
+                resistance, current = keithley.query(":MEAS:VOLT?; :SOUR:CURR?").strip().split(
                     ";"
                 )
             else:
