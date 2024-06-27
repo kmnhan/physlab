@@ -386,10 +386,9 @@ def _estimated_time_info(
     )
     cool_end, heat_start, heat_end = map(_format_time, (cool_end, heat_start, heat_end))
 
-    out.append(f"[1] {cool_time} ({cool_end})")
-    out.append(f"[2] {delay} ({heat_start})")
-    out.append(f"[3] {heat_time} ({heat_end})")
-    # out.append(f"Wait: {delay} ({heat_start})")
+    out.append(f"[1] {cool_end} ({cool_time})")
+    out.append(f"[2] {heat_start} ({delay})")
+    out.append(f"[3] {heat_end} ({heat_time})")
     out.append(f"Total {total_time}")
 
     if tempstart < 160.0 < temperature:
@@ -690,6 +689,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
                     f"Source Current {params['curr']} A",
                     f"NPLC {params['nplc']}",
                     f"Current Temperature {temperature:.2f} K",
+                    "\n<h1>Measurement Steps</h1>",
                     f"[1] Ramp to {params['tempstart']} K, {params['coolrate']} K/min",
                     f"[2] Wait {params['delay']} min",
                     f"[3] Ramp to {params['tempend']} K, {params['heatrate']} K/min",
