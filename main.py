@@ -225,7 +225,6 @@ def measure(
                 keithley.write("INIT")
                 keithley.write("*WAI")
                 msg = keithley.query('TRAC:DATA? 1, 2, "defbuffer1"')
-                q_res.extend(map(float, msg.split(",")))
 
             now = now + (datetime.datetime.now() - now) / 2
             temperature = (temperature + get_krdg()) / 2
@@ -234,7 +233,7 @@ def measure(
 
             if mode != 0:
                 # Calculate resistance
-                q_res.append(float(resistance))
+                q_res.extend(map(float, msg.split(",")))
                 if len(q_res) == q_res.maxlen:
                     if mode == 1:  # Current-reversal method
                         resistance = str((q_res[0] - q_res[1]) / 2)
