@@ -143,7 +143,17 @@ def measure(
     keithley.write("SOUR:FUNC CURR")
     keithley.write("SOUR:CURR:RANG:AUTO ON")
     keithley.write("SOUR:CURR:VLIM 10")
-    keithley.write(f"SOUR:CURR {curr:.15f}")
+
+    if mode == 0:
+        keithley.write(f"SOUR:CURR {curr:.15f}")
+    else:
+        # keithley.write(':SOUR:CONF:LIST:CRE "physlab_alt_list"')
+
+        # keithley.write(':SOUR:CONF:LIST:STOR "physlab_alt_list"')
+
+        # keithley.write(f"SOUR:CURR {-curr:.15f}")
+        # keithley.write(':SOUR:CONF:LIST:STOR "physlab_alt_list"')
+        keithley.write(f":SOUR:SWE:CURR:LIN {curr:.15f}, {-curr:.15f}, 2")
 
     # LakeShore325 temperature controller
     lake.write("*RST")
@@ -202,13 +212,20 @@ def measure(
             now: datetime.datetime = datetime.datetime.now()
             temperature: float = get_krdg()
 
-            if mode != 0:
+            if mode == 0:
+                resistance, current = keithley.query(":MEAS:VOLT?; :SOUR:CURR?").split(
+                    ";"
+                )
+            else:
+                current = str(curr)
                 # Reverse current for current-reversal and delta methods
-                sgn = np.sign(float(keithley.query(":SOUR:CURR?")))
-                keithley.write(f":SOUR:CURR {-sgn * curr:.15f}")
-
-            msg: str = keithley.query(":MEAS:VOLT?; :SOUR:CURR?")
-            resistance, current = msg.split(";")
+                # sgn = np.sign(float(keithley.query(":SOUR:CURR?")))
+                # keithley.write(f":SOUR:CURR {-sgn * curr:.15f}")
+                # keithley.write("*WAI")
+                keithley.write("INIT")
+                keithley.write("*WAI")
+                msg = keithley.query('TRAC:DATA? 1, 2, "defbuffer1"')
+                q_res.extend(map(float, msg.split(",")))
 
             now = now + (datetime.datetime.now() - now) / 2
             temperature = (temperature + get_krdg()) / 2
@@ -220,11 +237,9 @@ def measure(
                 q_res.append(float(resistance))
                 if len(q_res) == q_res.maxlen:
                     if mode == 1:  # Current-reversal method
-                        resistance = str(sgn * (q_res[0] - q_res[1]) / 2)
+                        resistance = str((q_res[0] - q_res[1]) / 2)
                     elif mode == 2:  # Delta method
-                        resistance = str(
-                            sgn * (q_res[0] + q_res[2] - 2 * q_res[1]) / 4
-                        )
+                        resistance = str(np.abs(q_res[0] + q_res[2] - 2 * q_res[1]) / 4)
                 else:
                     # Current reversal and delta method require 2 or 3 measurements
                     resistance = "nan"
@@ -241,7 +256,12 @@ def measure(
                     log_str += f"|  {float(resistance)/1e+3:>10.5f} kΩ  "
                 else:
                     log_str += f"|  {float(resistance):>11.5f} Ω  "
-                log_str += f"|  {float(current)*1e+3:+.6f} mA  "
+
+                if mode == 0:
+                    log_str += f"|  {float(current)*1e+3:+.6f} mA  "
+                else:
+                    log_str += f"|  ±{float(current)*1e+3:.6f} mA  "
+
                 log.info(log_str)
 
                 if updatesignal is not None:
