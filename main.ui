@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>285</width>
-    <height>386</height>
+    <width>247</width>
+    <height>360</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,7 +15,7 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="12" column="0" colspan="2">
+    <item row="11" column="0" colspan="2">
      <widget class="QPushButton" name="start_btn">
       <property name="text">
        <string>Start Measurement</string>
@@ -29,7 +29,7 @@
       </property>
      </widget>
     </item>
-    <item row="3" column="1">
+    <item row="2" column="1">
      <widget class="QDoubleSpinBox" name="spin_start">
       <property name="keyboardTracking">
        <bool>false</bool>
@@ -45,7 +45,7 @@
       </property>
      </widget>
     </item>
-    <item row="6" column="1">
+    <item row="5" column="1">
      <widget class="QDoubleSpinBox" name="spin_rateh">
       <property name="keyboardTracking">
        <bool>false</bool>
@@ -64,7 +64,7 @@
       </property>
      </widget>
     </item>
-    <item row="4" column="0">
+    <item row="3" column="0">
      <widget class="QLabel" name="label_2">
       <property name="text">
        <string>Temperature 2 (K)</string>
@@ -78,14 +78,14 @@
       </property>
      </widget>
     </item>
-    <item row="7" column="0">
+    <item row="6" column="0">
      <widget class="QLabel" name="label_4">
       <property name="text">
        <string>Current (mA)</string>
       </property>
      </widget>
     </item>
-    <item row="9" column="1">
+    <item row="8" column="1">
      <widget class="QDoubleSpinBox" name="spin_delay">
       <property name="keyboardTracking">
        <bool>false</bool>
@@ -98,7 +98,7 @@
       </property>
      </widget>
     </item>
-    <item row="5" column="1">
+    <item row="4" column="1">
      <widget class="QDoubleSpinBox" name="spin_rate">
       <property name="keyboardTracking">
        <bool>false</bool>
@@ -117,14 +117,14 @@
       </property>
      </widget>
     </item>
-    <item row="6" column="0">
+    <item row="5" column="0">
      <widget class="QLabel" name="label_6">
       <property name="text">
        <string>Rate 2 (K/min)</string>
       </property>
      </widget>
     </item>
-    <item row="9" column="0">
+    <item row="8" column="0">
      <widget class="QLabel" name="label_7">
       <property name="toolTip">
        <string>The delay before starting the ramp to Temperature 2 after reaching Temperature 1.</string>
@@ -153,7 +153,7 @@
       </item>
      </widget>
     </item>
-    <item row="7" column="1">
+    <item row="6" column="1">
      <widget class="QDoubleSpinBox" name="spin_curr">
       <property name="keyboardTracking">
        <bool>false</bool>
@@ -172,7 +172,7 @@
       </property>
      </widget>
     </item>
-    <item row="4" column="1">
+    <item row="3" column="1">
      <widget class="QDoubleSpinBox" name="spin_end">
       <property name="keyboardTracking">
        <bool>false</bool>
@@ -188,21 +188,21 @@
       </property>
      </widget>
     </item>
-    <item row="3" column="0">
+    <item row="2" column="0">
      <widget class="QLabel" name="label">
       <property name="text">
        <string>Temperature 1 (K)</string>
       </property>
      </widget>
     </item>
-    <item row="5" column="0">
+    <item row="4" column="0">
      <widget class="QLabel" name="label_5">
       <property name="text">
        <string>Rate 1 (K/min)</string>
       </property>
      </widget>
     </item>
-    <item row="8" column="0">
+    <item row="7" column="0">
      <widget class="QLabel" name="label_3">
       <property name="toolTip">
        <string>Number of power line cycles used by the SourceMeter. Smaller values indicate faster acquisition but with more noise. Values smaller than 1 are not recommended.</string>
@@ -212,7 +212,7 @@
       </property>
      </widget>
     </item>
-    <item row="8" column="1">
+    <item row="7" column="1">
      <widget class="QDoubleSpinBox" name="spin_delta">
       <property name="keyboardTracking">
        <bool>false</bool>
@@ -231,20 +231,6 @@
       </property>
      </widget>
     </item>
-    <item row="2" column="0" colspan="2">
-     <widget class="Line" name="line">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-     </widget>
-    </item>
-    <item row="11" column="0" colspan="2">
-     <widget class="Line" name="line_2">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-     </widget>
-    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -252,7 +238,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>285</width>
+     <width>247</width>
      <height>24</height>
     </rect>
    </property>
@@ -268,6 +254,9 @@
      <string>Edit</string>
     </property>
     <addaction name="actionmanual"/>
+    <addaction name="separator"/>
+    <addaction name="actionresetlake"/>
+    <addaction name="actionresetkeithley"/>
    </widget>
    <addaction name="menuView"/>
    <addaction name="menuEdit"/>
@@ -279,7 +268,7 @@
   </action>
   <action name="actioncommand">
    <property name="text">
-    <string>Lakeshore Command</string>
+    <string>Lakeshore 325 Command</string>
    </property>
   </action>
   <action name="actionmanual">
@@ -288,6 +277,28 @@
    </property>
    <property name="text">
     <string>Manual Control</string>
+   </property>
+  </action>
+  <action name="actionresetlake">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Reset Lakeshore 325 on Start</string>
+   </property>
+  </action>
+  <action name="actionresetkeithley">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Reset SourceMeter on Start</string>
    </property>
   </action>
  </widget>

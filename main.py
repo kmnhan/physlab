@@ -60,6 +60,8 @@ def measure(
     nplc: float,
     mode: Literal[0, 1, 2],
     manual: bool = False,
+    resetlake: bool = True,
+    resetkeithley: bool = True,
     updatesignal: QtCore.SignalInstance | None = None,
     heatingsignal: QtCore.SignalInstance | None = None,
     abortflag: threading.Event | None = None,
@@ -97,6 +99,10 @@ def measure(
         If True, the heater is controlled manually, and the program only does the
         temperature-resistance logging. `tempstart`, `tempend`, `coolrate`, and `delay`
         are ignored, by default False
+    resetlake : optional
+        Resets the LakeShore 325 to default settings before acquisition, by default True
+    resetkeithley : optional
+        Resets the Keithley 2450 to default settings before acquisition, by default True
     updatesignal : optional
         Emits the time as a datetime object and the data as a 3-tuple of floats, by
         default None
@@ -123,7 +129,8 @@ def measure(
         return float(lake.query("KRDG? B").strip())
 
     # Keithley 2450 setup
-    keithley.write("*RST")
+    if resetkeithley:
+        keithley.write("*RST")
     keithley.write('SENS:FUNC "VOLT"')
     keithley.write("SENS:VOLT:RSEN ON")  # 4-wire mode
     keithley.write("SENS:VOLT:UNIT OHM")
@@ -156,7 +163,8 @@ def measure(
         keithley.write(f":SOUR:SWE:CURR:LIN {curr:.15f}, {-curr:.15f}, 2")
 
     # LakeShore325 temperature controller
-    lake.write("*RST")
+    if resetlake:
+        lake.write("*RST")
     lake.write("CSET 1,B,1,0,2")  # Set loop 1 to control TB
 
     for i, (temprange, params) in enumerate(HEATER_PARAMETERS.items()):
@@ -610,6 +618,8 @@ class MainWindow(*uic.loadUiType("main.ui")):
             "delay": self.spin_delay.value(),
             "nplc": self.spin_delta.value(),
             "mode": self.mode_combo.currentIndex(),
+            "resetlake": self.actionresetlake.isChecked(),
+            "resetkeithley": self.actionresetkeithley.isChecked(),
         }
 
     @QtCore.Slot()
