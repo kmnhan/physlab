@@ -177,7 +177,10 @@ def measure(
 
     temperature = get_krdg()
 
-    _log_estimated_time(temperature, tempstart, tempend, coolrate, heatrate, delay)
+    for s in _estimated_time_info(
+        temperature, tempstart, tempend, coolrate, heatrate, delay, offset=3.0
+    ):
+        log.info(f"[{s}]")
 
     if not manual and np.abs(temperature - tempstart) > 10:
         # If current temperature is far from the start temperature, setpoint to current
@@ -357,28 +360,30 @@ def _format_time(dt: datetime.datetime) -> str:
     return dt.strftime("%X")
 
 
-def _log_estimated_time(
+def _estimated_time_info(
     temperature: float,
     tempstart: float,
     tempend: float,
     coolrate: float,
     heatrate: float,
     delay: float,
-) -> None:
+    offset: float = 0.0,
+) -> list[str]:
+    out = []
     if tempstart < 160.0 < temperature:
         time_elapsed_160 = np.abs(160 - temperature) / coolrate
         time_160 = datetime.datetime.now() + datetime.timedelta(
             seconds=time_elapsed_160 * 60
         )
-        log.info(
-            f"[Est. time to 160 K: {_format_minutes(time_elapsed_160)} "
-            f"({_format_time(time_160)})]"
+        out.append(
+            f"Est. time to 160 K: {_format_minutes(time_elapsed_160)} "
+            f"({_format_time(time_160)})"
         )
 
     cool_time = np.abs(temperature - tempstart) / coolrate
     heat_time = np.abs(tempstart - tempend) / heatrate
 
-    start_time = datetime.datetime.now() + datetime.timedelta(seconds=3)
+    start_time = datetime.datetime.now() + datetime.timedelta(seconds=offset)
     cool_end = start_time + datetime.timedelta(seconds=cool_time * 60)
     heat_start = cool_end + datetime.timedelta(seconds=delay * 60)
     heat_end = heat_start + datetime.timedelta(seconds=heat_time * 60)
@@ -388,9 +393,11 @@ def _log_estimated_time(
     )
     cool_end, heat_start, heat_end = map(_format_time, (cool_end, heat_start, heat_end))
 
-    log.info(f"[Est. time to {tempstart}: {cool_time} ({cool_end})]")
-    log.info(f"[Wait time {delay} ({heat_start})]")
-    log.info(f"[Est. time to T2: {heat_time}, Total {total_time} ({heat_end})]")
+    out.append(f"Est. time to {tempstart}: {cool_time} ({cool_end})")
+    out.append(f"Wait time {delay} ({heat_start})")
+    out.append(f"Est. time to {tempend}: {heat_time}, Total {total_time} ({heat_end})")
+
+    return out
 
 
 class WritingProc(multiprocessing.Process):
@@ -668,14 +675,29 @@ class MainWindow(*uic.loadUiType("main.ui")):
                 ]
             )
         else:
+            handler = RequestHandler("GPIB0::12::INSTR")
+            handler.open()
+            temperature = float(handler.query("KRDG? B").strip())
+            handler.close()
             msg = "\n".join(
                 [
                     f"Save to {params['filename']}",
+                    f"Current Temperature {temperature:.2f} K",
                     f"[1] Ramp to {params['tempstart']} K, {params['coolrate']} K/min",
                     f"[2] Wait {params['delay']} min",
                     f"[3] Ramp to {params['tempend']} K, {params['heatrate']} K/min",
                     f"Current {params['curr']} A",
-                    f"NPLC {params['nplc']}",
+                    f"NPLC {params['nplc']}\n",
+                    "Estimated Measurement Timeline"
+                    * _estimated_time_info(
+                        temperature,
+                        params["tempstart"],
+                        params["tempend"],
+                        params["coolrate"],
+                        params["heatrate"],
+                        params["delay"],
+                        offset=10.0,
+                    ),
                 ]
             )
 
