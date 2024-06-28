@@ -249,7 +249,7 @@ def measure(
                 q_res.extend(map(float, msg.split(",")))
                 if len(q_res) == q_res.maxlen:
                     if mode == 1:  # Current-reversal method
-                        resistance = str((q_res[0] - q_res[1]) / 2)
+                        resistance = str((q_res[0] + q_res[1]) / 2)
                     elif mode == 2:  # Delta method
                         resistance = str(np.abs(q_res[0] + q_res[2] - 2 * q_res[1]) / 4)
                 else:
