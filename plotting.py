@@ -194,8 +194,8 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
     def format_value_for_label(label: str, value: float):
         if label == "Temperature (K)":
             return f"T = {value:.5g} [K]"
-        elif label == "1/T (1/K)":
-            return f"1/T = {value:.5g} [1/K]\nT = {1/value:.5g} [K]"
+        elif label == "1/Temperature (K⁻¹)":
+            return f"1/T = {value:.5g} [K⁻¹]\nT = {1/value:.5g} [K]"
         elif label == "Resistance (Ohm)":
             return f"R = {value:.5g} [Ω]"
         elif label == "Time (s)":
@@ -239,7 +239,7 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
     @property
     def temp_label(self) -> str:
         if self.inv_temp_check.isChecked():
-            return "1/T (1/K)"
+            return "1/Temperature (K⁻¹)"
         else:
             return "Temperature (K)"
 
