@@ -226,15 +226,11 @@ def measure(
             temperature: float = get_krdg()
 
             if mode == 0:
-                resistance, current = keithley.query(":MEAS:VOLT?; :SOUR:CURR?").strip().split(
-                    ";"
+                resistance, current = (
+                    keithley.query(":MEAS:VOLT?; :SOUR:CURR?").strip().split(";")
                 )
             else:
                 current = str(curr)
-                # Reverse current for current-reversal and delta methods
-                # sgn = np.sign(float(keithley.query(":SOUR:CURR?")))
-                # keithley.write(f":SOUR:CURR {-sgn * curr:.15f}")
-                # keithley.write("*WAI")
                 keithley.write("INIT")
                 keithley.write("*WAI")
                 msg = keithley.query('TRAC:DATA? 1, 2, "defbuffer1"')
@@ -251,7 +247,7 @@ def measure(
                     if mode == 1:  # Current-reversal method
                         resistance = str((q_res[0] + q_res[1]) / 2)
                     elif mode == 2:  # Delta method
-                        resistance = str(np.abs(q_res[0] + q_res[2] - 2 * q_res[1]) / 4)
+                        resistance = str(np.abs(q_res[0] + q_res[2] + 2 * q_res[1]) / 4)
                 else:
                     # Current reversal and delta method require 2 or 3 measurements
                     resistance = "nan"
