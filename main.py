@@ -59,6 +59,7 @@ def measure(
     delay: float,
     nplc: float,
     mode: Literal[0, 1, 2],
+    pmode: Literal[0,1],
     manual: bool = False,
     resetlake: bool = True,
     resetkeithley: bool = True,
@@ -95,6 +96,8 @@ def measure(
     mode
         One of 0, 1, 2, each corresponding to the offset-compensated ohms method,
         current reversal method, and the delta method.
+    pmode
+        One of 0 and 1 each corresponding to the 4wire probe and 2wire probo mode
     manual : optional
         If True, the heater is controlled manually, and the program only does the
         temperature-resistance logging. `tempstart`, `tempend`, `coolrate`, and `delay`
@@ -132,7 +135,10 @@ def measure(
     if resetkeithley:
         keithley.write("*RST")
     keithley.write('SENS:FUNC "VOLT"')
-    keithley.write("SENS:VOLT:RSEN ON")  # 4-wire mode
+    if pmode == 0: # 4-wire mode
+        keithley.write("SENS:VOLT:RSEN ON")  # 4-wire mode
+    elif pmode == 1: # 2-wire mode
+        keithley.write("SENS:VOLT:RSEN OFF") 
     keithley.write("SENS:VOLT:UNIT OHM")
     keithley.write("SENS:VOLT:RANG:AUTO ON")
     if mode == 0:  # offset-compensated ohms method
@@ -627,6 +633,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
             "mode": self.mode_combo.currentIndex(),
             "resetlake": self.actionresetlake.isChecked(),
             "resetkeithley": self.actionresetkeithley.isChecked(),
+            "pmode": self.pmode_combo.currentIndex()
         }
 
     @QtCore.Slot()
@@ -728,6 +735,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
             self.spin_rateh,
             self.mode_combo,
             self.actionmanual,
+            self.pmode_combo,
         ):
             w.setDisabled(True)
         self.start_btn.setText("Abort Measurement")
@@ -752,6 +760,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
             self.spin_rateh,
             self.mode_combo,
             self.actionmanual,
+            self.pmode_combo,
         ):
             w.setDisabled(False)
         self.start_btn.setText("Start Measurement")

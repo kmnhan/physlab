@@ -15,7 +15,7 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="11" column="0" colspan="2">
+    <item row="12" column="0" colspan="2">
      <widget class="QPushButton" name="start_btn">
       <property name="text">
        <string>Start Measurement</string>
@@ -149,6 +149,20 @@
       <item>
        <property name="text">
         <string>Mode: Delta Method</string>
+       </property>
+      </item>
+     </widget>
+    </item>
+    <item row="11" column="0" colspan="2">
+     <widget class="QComboBox" name="pmode_combo">
+      <item>
+       <property name="text">
+        <string>Mode: 4-Wire mode</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>Mode: 2-Wire mode</string>
        </property>
       </item>
      </widget>
