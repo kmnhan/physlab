@@ -1,5 +1,7 @@
 # PhysLab DAQ
 
+NOTE: Please contact <khan@kaist.ac.kr> before making any changes to the program or experimental setup!
+
 ## Introduction
 
 Data acquisition program for 4-probe resistance measurements, written in python.
@@ -10,11 +12,7 @@ Assumes that the GPIB-USB-HS driver is installed.
 
 ## Running
 
-* Create a conda environment with the packages in `environment.yml`.
-  ```bash
-  conda env create -f environment.yml
-  ```
-* Modify `start.bat` to match the path to your conda installation.
+* [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
 * Double-click `start.bat` to run the program.
 
 ## Notable changes

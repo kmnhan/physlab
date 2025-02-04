@@ -1,8 +1,20 @@
 [project]
 name = "physlab"
-version = "0.0.1"
+version = "0.1.0"
 authors = [{ name = "Kimoon Han", email = "khan@kaist.ac.kr" }]
 requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.2.2",
+    "pyqt6>=6.8.0",
+    "pyqtgraph>=0.13.7",
+    "pyvisa>=1.14.1",
+    "qtpy>=2.4.2",
+    "xarray>=2025.1.2",
+]
+
+[dependency-groups]
+dev = ["ruff>=0.9.4"]
+
 
 [tool.ruff]
 line-length = 88
@@ -11,32 +23,44 @@ indent-width = 4
 [tool.ruff.lint]
 select = [
     "F",
-    "E4",
-    "E7",
-    "E9",
+    "E",
     "W",
     "I",
     "D",
     "UP",
+    "YTT",
+    "ASYNC",
+    # "FBT",
     "B",
+    "A",
     "C4",
+    # "DTZ",
     "FA",
     "ICN",
+    "LOG",
+    "G",
     "PIE",
+    # "T20",
+    "PYI",
     "PT",
     "Q",
     "RSE",
+    "RET",
+    "SIM",
     "TID",
-    "TCH",
+    "TC",
     "INT",
     # "ARG",
     # "PTH",
     # "FIX",
+    # "PLC",
+    # "PLE",
+    # "PLW",
     "TRY",
     "FLY",
     "NPY",
     "PERF",
-    # "FURB",
+    "FURB",
     "RUF",
 ]
 ignore = [
@@ -53,7 +77,6 @@ ignore = [
     "RUF012", # Mutable class attributes should be annotated with `typing.ClassVar`
 ]
 extend-select = []
-# allowed-confusables = ["−", "γ"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"

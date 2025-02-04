@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import collections
+import contextlib
 import csv
 import datetime
 import logging
@@ -19,10 +20,8 @@ from qtpy import QtCore, QtWidgets, uic
 from instrument import RequestHandler
 from plotting import PlotWindow
 
-try:
+with contextlib.suppress(Exception):
     os.chdir(sys._MEIPASS)
-except:  # noqa: E722
-    pass
 
 
 # HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
@@ -59,7 +58,7 @@ def measure(
     delay: float,
     nplc: float,
     mode: Literal[0, 1, 2],
-    pmode: Literal[0,1],
+    pmode: Literal[0, 1],
     manual: bool = False,
     resetlake: bool = True,
     resetkeithley: bool = True,
@@ -97,7 +96,7 @@ def measure(
         One of 0, 1, 2, each corresponding to the offset-compensated ohms method,
         current reversal method, and the delta method.
     pmode
-        One of 0 and 1 each corresponding to the 4wire probe and 2wire probo mode
+        One of 0 and 1 each corresponding to the 4wire probe and 2wire probe mode
     manual : optional
         If True, the heater is controlled manually, and the program only does the
         temperature-resistance logging. `tempstart`, `tempend`, `coolrate`, and `delay`
@@ -118,11 +117,11 @@ def measure(
     # Connect to GPIB instruments
     lake = RequestHandler("GPIB0::12::INSTR")
     lake.open()
-    log.info(f"[Connected to {lake.query('*IDN?').strip()}]")
+    log.info("[Connected to %s]", lake.query("*IDN?").strip())
 
     keithley = RequestHandler("GPIB1::18::INSTR", interval_ms=0)
     keithley.open()
-    log.info(f"[Connected to {keithley.query('*IDN?').strip()}]")
+    log.info("[Connected to %s]", keithley.query("*IDN?").strip())
 
     def flush_commands():
         if queue is not None:
@@ -135,10 +134,10 @@ def measure(
     if resetkeithley:
         keithley.write("*RST")
     keithley.write('SENS:FUNC "VOLT"')
-    if pmode == 0: # 4-wire mode
+    if pmode == 0:  # 4-wire mode
         keithley.write("SENS:VOLT:RSEN ON")  # 4-wire mode
-    elif pmode == 1: # 2-wire mode
-        keithley.write("SENS:VOLT:RSEN OFF") 
+    elif pmode == 1:  # 2-wire mode
+        keithley.write("SENS:VOLT:RSEN OFF")
     keithley.write("SENS:VOLT:UNIT OHM")
     keithley.write("SENS:VOLT:RANG:AUTO ON")
     if mode == 0:  # offset-compensated ohms method
@@ -175,7 +174,7 @@ def measure(
 
     for i, (temprange, params) in enumerate(HEATER_PARAMETERS.items()):
         lake.write(
-            f"ZONE 1,{i+1},{temprange[1]},"
+            f"ZONE 1,{i + 1},{temprange[1]},"
             f"{params[1]},{params[2]},{params[3]},"
             f"0, {params[0]}"
         )
@@ -188,7 +187,7 @@ def measure(
         for s in _estimated_time_info(
             temperature, tempstart, tempend, coolrate, heatrate, delay, offset=3.0
         ):
-            log.info(f"[{s}]")
+            log.info("[%s]", s)
 
     if not manual and np.abs(temperature - tempstart) > 10:
         # If current temperature is far from the start temperature, setpoint to current
@@ -220,7 +219,7 @@ def measure(
             writer.append(datetime.datetime.now(), ["nan"] * 3)
 
         if not manual:
-            log.info(f"[Set temperature {target} K ]")
+            log.info("[Set temperature %s K ]", target)
             lake.write(f"RAMP 1,1,{temprate}; SETP 1,{target:.2f}")
 
         while True:
@@ -267,14 +266,14 @@ def measure(
                 log_str = f"  {now}  "
                 log_str += f"|  {temperature:>7.3f} K  "
                 if float(resistance) > 1e3:
-                    log_str += f"|  {float(resistance)/1e+3:>10.5f} kΩ  "
+                    log_str += f"|  {float(resistance) / 1e3:>10.5f} kΩ  "
                 else:
                     log_str += f"|  {float(resistance):>11.5f} Ω  "
 
                 if mode == 0:
-                    log_str += f"|  {float(current)*1e+3:+.6f} mA  "
+                    log_str += f"|  {float(current) * 1e3:+.6f} mA  "
                 else:
-                    log_str += f"|  ±{float(current)*1e+3:.6f} mA  "
+                    log_str += f"|  ±{float(current) * 1e3:.6f} mA  "
 
                 log.info(log_str)
 
@@ -292,14 +291,12 @@ def measure(
                     if time_left >= delay * 60:
                         break  # Exit loop
 
-            if abortflag is not None:
-                if abortflag.is_set():
-                    break
-
-        if abortflag is not None:
-            if abortflag.is_set():
-                log.info("[Measurement aborted]")
+            if abortflag is not None and abortflag.is_set():
                 break
+
+        if abortflag is not None and abortflag.is_set():
+            log.info("[Measurement aborted]")
+            break
 
     # Stop data writer
     writer.stop(2.0)
@@ -320,7 +317,7 @@ def communicate(handler: RequestHandler, queue: collections.deque):
             except (pyvisa.VisaIOError, pyvisa.InvalidSession):
                 log.exception("Error writing command")
             else:
-                log.info(f"[<- {message.strip()}]")
+                log.info("[<- %s]", message.strip())
                 replysignal.emit("Command sent.", datetime.datetime.now())
         else:  # Query
             try:
@@ -328,8 +325,8 @@ def communicate(handler: RequestHandler, queue: collections.deque):
             except (pyvisa.VisaIOError, pyvisa.InvalidSession):
                 log.exception("Error querying command")
             else:
-                log.info(f"[<- {message.strip()}]")
-                log.info(f"[-> {rep.strip()}]")
+                log.info("[<- %s]", message.strip())
+                log.info("[-> %s]", rep.strip())
                 replysignal.emit(rep, datetime.datetime.now())
 
 
@@ -633,7 +630,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
             "mode": self.mode_combo.currentIndex(),
             "resetlake": self.actionresetlake.isChecked(),
             "resetkeithley": self.actionresetkeithley.isChecked(),
-            "pmode": self.pmode_combo.currentIndex()
+            "pmode": self.pmode_combo.currentIndex(),
         }
 
     @QtCore.Slot()

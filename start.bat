@@ -1,2 +1,1 @@
-call C:\Users\user\miniconda3\condabin\conda activate rtdaq
-python main.py
+uv run main.py
