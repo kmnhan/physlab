@@ -41,6 +41,9 @@ HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
     (250, 350): ("2", 300, 33, 0),
 }  #: Heater and PID parameters for each temperature range
 
+
+TEMP_SENSOR: str = "B"  #: Temperature sensor to use for logging & PID control
+
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 handler = logging.StreamHandler(sys.stdout)
@@ -127,8 +130,10 @@ def measure(
         if queue is not None:
             communicate(lake, queue)
 
+    log.info("[Configured to control & log T%s]", TEMP_SENSOR)
+
     def get_krdg() -> float:
-        return float(lake.query("KRDG? B").strip())
+        return float(lake.query(f"KRDG? {TEMP_SENSOR}").strip())
 
     # Keithley 2450 setup
     if resetkeithley:
@@ -170,7 +175,7 @@ def measure(
     # LakeShore325 temperature controller
     if resetlake:
         lake.write("*RST")
-    lake.write("CSET 1,B,1,0,2")  # Set loop 1 to control TB
+    lake.write(f"CSET 1,{TEMP_SENSOR},1,0,2")  # Set loop 1 to control temperature
 
     for i, (temprange, params) in enumerate(HEATER_PARAMETERS.items()):
         lake.write(
@@ -681,7 +686,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
         else:
             handler = RequestHandler("GPIB0::12::INSTR")
             handler.open()
-            temperature = float(handler.query("KRDG? B").strip())
+            temperature = float(handler.query(f"KRDG? {TEMP_SENSOR}").strip())
             handler.close()
             msg = "<br>".join(
                 [
