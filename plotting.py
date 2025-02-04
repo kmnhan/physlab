@@ -13,8 +13,7 @@ class DiscreteInfiniteLine(pg.InfiniteLine):
     def temp_value(self) -> float:
         if hasattr(self, "_temp_value"):
             return self._temp_value
-        else:
-            return self.value()
+        return self.value()
 
     def mouseDragEvent(self, ev):
         if (
@@ -192,14 +191,17 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
 
     @staticmethod
     def format_value_for_label(label: str, value: float):
-        if label == "Temperature (K)":
-            return f"T = {value:.5g} [K]"
-        elif label == "1/Temperature (K⁻¹)":
-            return f"1/T = {value:.5g} [K⁻¹]\nT = {1/value:.5g} [K]"
-        elif label == "Resistance (Ohm)":
-            return f"R = {value:.5g} [Ω]"
-        elif label == "Time (s)":
-            return f"t = {value:.5g} [s]"
+        match label:
+            case "Temperature (K)":
+                return f"T = {value:.5g} [K]"
+            case "1/Temperature (K⁻¹)":
+                return f"1/T = {value:.5g} [K⁻¹]\nT = {1 / value:.5g} [K]"
+            case "Resistance (Ohm)":
+                return f"R = {value:.5g} [Ω]"
+            case "Time (s)":
+                return f"t = {value:.5g} [s]"
+            case _:
+                return f"{value:.5g}"
 
     @property
     def dataset(self) -> xr.Dataset:
@@ -220,42 +222,38 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
     @property
     def xydata(self):
         ds = self.dataset.dropna("time")
-        if self.combo.currentIndex() == 0:
-            # R vs T
-            if self.inv_temp_check.isChecked():
-                return 1 / ds.temp, ds.res
-            else:
+        match self.combo.currentIndex():
+            case 0:
+                # R vs T
+                if self.inv_temp_check.isChecked():
+                    return 1 / ds.temp, ds.res
                 return ds.temp, ds.res
-        elif self.combo.currentIndex() == 1:
-            # R vs t
-            return ds.time, ds.res
-        elif self.combo.currentIndex() == 2:
-            # T vs t
-            if self.inv_temp_check.isChecked():
-                return ds.time, 1 / ds.temp
-            else:
+            case 1:
+                # R vs t
+                return ds.time, ds.res
+            case _:
+                # T vs t
+                if self.inv_temp_check.isChecked():
+                    return ds.time, 1 / ds.temp
                 return ds.time, ds.temp
 
     @property
     def temp_label(self) -> str:
         if self.inv_temp_check.isChecked():
             return "1/Temperature (K⁻¹)"
-        else:
-            return "Temperature (K)"
+        return "Temperature (K)"
 
     @property
     def xlabel(self) -> str:
         if self.combo.currentIndex() == 0:
             return self.temp_label
-        else:
-            return "Time (s)"
+        return "Time (s)"
 
     @property
     def ylabel(self) -> str:
         if self.combo.currentIndex() == 2:
             return self.temp_label
-        else:
-            return "Resistance (Ohm)"
+        return "Resistance (Ohm)"
 
 
 if __name__ == "__main__":
