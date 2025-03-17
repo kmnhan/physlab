@@ -313,9 +313,10 @@ def measure(
                     if t_cool_end is None:
                         t_cool_end = time.perf_counter()
 
-                    time_left = time.perf_counter() - t_cool_end
+                    # Time elapsed since reaching Temp 1
+                    time_elapsed = time.perf_counter() - t_cool_end
 
-                    if time_left >= delay * 60:
+                    if time_elapsed >= delay * 60:
                         break  # Exit loop
 
             if abortflag is not None and abortflag.is_set():
@@ -691,7 +692,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
             QtWidgets.QMessageBox.critical(
                 self,
                 "Invalid Temperature",
-                "Low Temperature must be lower than High Temperature.",
+                "T1 must be lower than T2",
             )
             return
 

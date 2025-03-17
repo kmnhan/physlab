@@ -10,6 +10,17 @@ Uses the Keithley 2450 SourceMeter and Lakeshore 325 temperature controller.
 
 Assumes that the GPIB-USB-HS driver is installed.
 
+Logs 4-wire resistance and temperature data to a `.csv` file while controlling the temperature. The sequence is as follows:
+
+1. Set ramp rate to [Rate 1] K/min
+2. Setpoint [Temperature 1] K
+3. Once temperature is within ±0.3 K of [Temperature 1] K, wait for [Delay] min
+4. Set ramp rate to [Rate 2] K/min
+5. Setpoint [Temperature 2] K
+6. Once temperature is within ±0.3 K of [Temperature 2] K, end the measurement
+
+There are three measurement modes for the resistance: the offset-compensated ohms method, the current reversal method, and the delta method. For more information, refer to the Keithley Low Level Measurements Handbook, section 3-2 and 3-3.
+
 ## Running
 
 * [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
