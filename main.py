@@ -23,6 +23,9 @@ from plotting import PlotWindow
 with contextlib.suppress(Exception):
     os.chdir(sys._MEIPASS)
 
+RESOURCE_LAKESHORE: str = "GPIB0::12::INSTR"  #: Resource name for the LakeShore 325
+RESOURCE_KEITHLEY: str = "GPIB1::18::INSTR"  #: Resource name for the Keithley 2450
+
 
 # HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
 #     (2, 10): ("1", 30, 40, 40),
@@ -137,11 +140,11 @@ def measure(
 
     """
     # Connect to GPIB instruments
-    lake = RequestHandler("GPIB0::12::INSTR")
+    lake = RequestHandler(RESOURCE_LAKESHORE)
     lake.open()
     log.info("[Connected to %s]", lake.query("*IDN?").strip())
 
-    keithley = RequestHandler("GPIB1::18::INSTR", interval_ms=0)
+    keithley = RequestHandler(RESOURCE_KEITHLEY, interval_ms=0)
     keithley.open()
     log.info("[Connected to %s]", keithley.query("*IDN?").strip())
 
@@ -594,7 +597,7 @@ class CommandWidget(*uic.loadUiType("command.ui")):
         if self.measure_thread.isRunning():
             self.measure_thread.request_write(self.input, self.sigReply)
         else:
-            handler = RequestHandler("GPIB0::12::INSTR")
+            handler = RequestHandler(RESOURCE_LAKESHORE)
             handler.open()
             q = queue.Queue()
             q.put((self.input, self.sigReply, False))
@@ -606,7 +609,7 @@ class CommandWidget(*uic.loadUiType("command.ui")):
         if self.measure_thread.isRunning():
             self.measure_thread.request_query(self.input, self.sigReply)
         else:
-            handler = RequestHandler("GPIB0::12::INSTR")
+            handler = RequestHandler(RESOURCE_LAKESHORE)
             handler.open()
             q = queue.Queue()
             q.put((self.input, self.sigReply, True))
@@ -702,7 +705,7 @@ class MainWindow(*uic.loadUiType("main.ui")):
                 ]
             )
         else:
-            handler = RequestHandler("GPIB0::12::INSTR")
+            handler = RequestHandler(RESOURCE_LAKESHORE)
             handler.open()
             temperature = float(handler.query(f"KRDG? {TEMP_SENSOR}").strip())
             handler.close()
