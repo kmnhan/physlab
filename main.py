@@ -220,7 +220,7 @@ def measure(
         time.sleep(2)
 
     # Start data writer
-    writer = WritingProc(filename)
+    writer = WritingProc(filename, datetime.datetime.now())
     writer.start()
 
     # Variable to store time when waiting before heating
@@ -428,12 +428,12 @@ def _estimated_time_info(
 
 
 class WritingProc(multiprocessing.Process):
-    def __init__(self, filename: os.PathLike):
+    def __init__(self, filename: os.PathLike, start_datetime: datetime.datetime):
         super().__init__()
-        self.filename = str(filename)
+        self.filename = filename
         self._stopped = multiprocessing.Event()
         self.queue = multiprocessing.Queue()
-        self.start_datetime = None
+        self.start_datetime: datetime.datetime = start_datetime
 
         # Write header if file does not exist
         if not os.path.isfile(self.filename):
@@ -450,7 +450,6 @@ class WritingProc(multiprocessing.Process):
                 )
 
     def run(self):
-        self.start_datetime = datetime.datetime.now()
         self._stopped.clear()
         while not self._stopped.is_set():
             time.sleep(0.02)
