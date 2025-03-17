@@ -44,11 +44,30 @@ HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
 
 TEMP_SENSOR: str = "B"  #: Temperature sensor to use for logging & PID control
 
+# TB is near the sample, and TA is near the cold head & heater. If TB reads lower than
+# TA at low temperatures with the heater off, the two ports on the LakeShore 325 may not
+# be connected properly.
+
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 handler = logging.StreamHandler(sys.stdout)
 handler.setFormatter(logging.Formatter("%(message)s"))
 log.addHandler(handler)
+
+exc_handler = logging.FileHandler("exceptions.log")
+exc_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+exc_handler.setLevel(logging.ERROR)
+log.addHandler(exc_handler)
+
+
+def _log_uncaught_exceptions(exc_type, exc_value, exc_traceback):
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+    log.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+
+
+sys.excepthook = _log_uncaught_exceptions
 
 
 def measure(
