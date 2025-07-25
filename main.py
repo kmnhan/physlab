@@ -435,11 +435,11 @@ def _estimated_time_info(
 
 
 def _make_log_string(
-    dt: datetime.datetime, temperature: float, resistance: str, current: str
+    dt: datetime.datetime, temperature: str, resistance: str, current: str
 ) -> str:
     """Create a formatted log string for the measurement."""
     log_str = f"  {dt}  "
-    log_str += f"|  {temperature:>7.3f} K  "
+    log_str += f"|  {float(temperature):>7.3f} K  "
     if float(resistance) > 1e3:
         log_str += f"|  {float(resistance) / 1e3:>10.5f} kΩ  "
     else:
