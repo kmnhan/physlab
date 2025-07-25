@@ -1,6 +1,6 @@
 [project]
 name = "physlab"
-version = "0.1.0"
+version = "0.3.0"
 authors = [{ name = "Kimoon Han", email = "khan@kaist.ac.kr" }]
 requires-python = ">=3.11"
 dependencies = [
