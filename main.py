@@ -48,6 +48,8 @@ HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
 TEMP_SENSOR_LOG: str = "B"  #: Temperature sensor to use for logging
 TEMP_SENSOR_LOOP: str = "B"  #: Temperature sensor to use for PID control
 
+T_DIFF: float = 0.3  #: Temperature difference in Kelvins to consider measurement done
+
 # TB is near the sample, and TA is near the cold head & heater. If TB reads lower than
 # TA at low temperatures with the heater off, the two ports on the LakeShore 325 may not
 # be connected properly.
@@ -284,7 +286,7 @@ def measure(
             temperature = (temperature + get_krdg()) / 2
 
             match mode:
-                case 1:  # Current-reversal method\
+                case 1:  # Current-reversal method
                     # Take average of the two measurements
                     resistance = str(sum(map(float, msg.split(","))) / 2)
 
@@ -305,26 +307,12 @@ def measure(
 
             if resistance != "nan":
                 writer.append(now, [str(temperature), resistance, current])
-                log_str = f"  {now}  "
-                log_str += f"|  {temperature:>7.3f} K  "
-                if float(resistance) > 1e3:
-                    log_str += f"|  {float(resistance) / 1e3:>10.5f} kΩ  "
-                else:
-                    log_str += f"|  {float(resistance):>11.5f} Ω  "
-
-                if mode == 0:
-                    log_str += f"|  {float(current) * 1e3:+.6f} mA  "
-                else:
-                    log_str += f"|  ±{float(current) * 1e3:.6f} mA  "
-
-                log.info(log_str)
-
                 if updatesignal is not None:
                     updatesignal.emit(
                         now, (temperature, float(resistance), float(current))
                     )
 
-                if not manual and np.abs(target - temperature) < 0.3:
+                if not manual and np.abs(target - temperature) < T_DIFF:
                     if t_cool_end is None:
                         t_cool_end = time.perf_counter()
 
@@ -446,6 +434,21 @@ def _estimated_time_info(
     return out
 
 
+def _make_log_string(
+    dt: datetime.datetime, temperature: float, resistance: str, current: str
+) -> str:
+    """Create a formatted log string for the measurement."""
+    log_str = f"  {dt}  "
+    log_str += f"|  {temperature:>7.3f} K  "
+    if float(resistance) > 1e3:
+        log_str += f"|  {float(resistance) / 1e3:>10.5f} kΩ  "
+    else:
+        log_str += f"|  {float(resistance):>11.5f} Ω  "
+    log_str += f"|  {float(current) * 1e3:+.6f} mA  "
+
+    return log_str
+
+
 class WritingProc(multiprocessing.Process):
     def __init__(self, filename: os.PathLike, start_datetime: datetime.datetime):
         super().__init__()
@@ -490,6 +493,8 @@ class WritingProc(multiprocessing.Process):
                 for _ in range(n_left):
                     self.queue.put(self.queue.get())
                 continue
+            else:
+                log.info(_make_log_string(dt, *msg))
 
     def stop(self, timeout: int | None = None):
         n_left = int(self.queue.qsize())
