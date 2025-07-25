@@ -258,13 +258,13 @@ def measure(
             if not manual:
                 # Avoid sudden output when starting heating at base temp
                 temperature = get_krdg()
-                if temperature < 4.0:
+                if temperature < 3.0:
                     # Turn heater off
                     lake.write("RANGE 1,0")
                     # Set ramp rate to 0
                     lake.write("RAMP 1,1,0")
-                    # Setpoint to current + 0.5 K
-                    lake.write(f"SETP 1,{temperature + 0.5:.2f}; RANGE 1,0")
+                    # Setpoint to current + 0.1 K
+                    lake.write(f"SETP 1,{temperature + 0.5:.2f}; RANGE 1,1")
 
         if not manual:
             log.info("[Set temperature %s K ]", target)
