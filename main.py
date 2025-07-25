@@ -45,7 +45,8 @@ HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
 }  #: Heater and PID parameters for each temperature range
 
 
-TEMP_SENSOR: str = "B"  #: Temperature sensor to use for logging & PID control
+TEMP_SENSOR_LOG: str = "B"  #: Temperature sensor to use for logging
+TEMP_SENSOR_LOOP: str = "B"  #: Temperature sensor to use for PID control
 
 # TB is near the sample, and TA is near the cold head & heater. If TB reads lower than
 # TA at low temperatures with the heater off, the two ports on the LakeShore 325 may not
@@ -152,10 +153,11 @@ def measure(
         if queue is not None:
             communicate(lake, queue)
 
-    log.info("[Configured to control & log T%s]", TEMP_SENSOR)
+    log.info("[Configured to log T%s]", TEMP_SENSOR_LOG)
+    log.info("[Configured to use T%s in PID loop]", TEMP_SENSOR_LOOP)
 
     def get_krdg() -> float:
-        return float(lake.query(f"KRDG? {TEMP_SENSOR}").strip())
+        return float(lake.query(f"KRDG? {TEMP_SENSOR_LOG}").strip())
 
     # Keithley 2450 setup
     if resetkeithley:
@@ -197,7 +199,7 @@ def measure(
     # LakeShore325 temperature controller
     if resetlake:
         lake.write("*RST")
-    lake.write(f"CSET 1,{TEMP_SENSOR},1,0,2")  # Set loop 1 to control temperature
+    lake.write(f"CSET 1,{TEMP_SENSOR_LOOP},1,0,2")  # Set loop 1 to control temperature
 
     for i, (temprange, params) in enumerate(HEATER_PARAMETERS.items()):
         lake.write(
@@ -708,14 +710,14 @@ class MainWindow(*uic.loadUiType("main.ui")):
         else:
             handler = RequestHandler(RESOURCE_LAKESHORE)
             handler.open()
-            temperature = float(handler.query(f"KRDG? {TEMP_SENSOR}").strip())
+            temperature = float(handler.query(f"KRDG? {TEMP_SENSOR_LOOP}").strip())
             handler.close()
             msg = "<br>".join(
                 [
                     f"Save to {params['filename']}",
                     f"Source Current {params['curr']} A",
                     f"NPLC {params['nplc']}",
-                    f"Current Temperature {temperature:.2f} K",
+                    f"Current Temperature (T{TEMP_SENSOR_LOOP}) {temperature:.2f} K",
                     "<br><b>Measurement Steps</b>",
                     f"[1] Ramp to {params['tempstart']} K, {params['coolrate']} K/min",
                     f"[2] Wait {params['delay']} min",
