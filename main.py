@@ -42,7 +42,7 @@ HEATER_PARAMETERS: dict[tuple[int, int], tuple[str, int, int]] = {
     (75, 150): ("2", 175, 30, 0),
     (150, 250): ("2", 250, 31, 0),
     (250, 350): ("2", 300, 33, 0),
-}  #: Heater and PID parameters for each temperature range
+}  #: Heater range and PID parameters for each temperature range. Maximum 10 zones.
 
 
 TEMP_SENSOR_LOG: str = "B"  #: Temperature sensor to use for logging
@@ -201,15 +201,18 @@ def measure(
         lake.write("*RST")
     lake.write(f"CSET 1,{TEMP_SENSOR_LOOP},1,0,2")  # Set loop 1 to control temperature
 
+    # Populate zone 1 with PID parameters
     for i, (temprange, params) in enumerate(HEATER_PARAMETERS.items()):
         lake.write(
             f"ZONE 1,{i + 1},{temprange[1]},"
             f"{params[1]},{params[2]},{params[3]},"
             f"0, {params[0]}"
         )
+
+    # Set loop 1 to use zone
     lake.write("CMODE 1,2")
 
-    temperature = get_krdg()
+    temperature: float = get_krdg()
 
     if not manual:
         log.info("[Estimated Measurement Timeline]")
@@ -252,6 +255,17 @@ def measure(
             # Add nan row before heating
             writer.append(datetime.datetime.now(), ["nan"] * 3)
 
+            if not manual:
+                # Avoid sudden output when starting heating at base temp
+                temperature = get_krdg()
+                if temperature < 4.0:
+                    # Turn heater off
+                    lake.write("RANGE 1,0")
+                    # Set ramp rate to 0
+                    lake.write("RAMP 1,1,0")
+                    # Setpoint to current + 0.5 K
+                    lake.write(f"SETP 1,{temperature + 0.5:.2f}; RANGE 1,0")
+
         if not manual:
             log.info("[Set temperature %s K ]", target)
             lake.write(f"RAMP 1,1,{temprate}; SETP 1,{target:.2f}")
@@ -262,7 +276,7 @@ def measure(
             # In order to compensate for voltage measurement time, the time and
             # temperature are measured twice and averaged.
             now: datetime.datetime = datetime.datetime.now()
-            temperature: float = get_krdg()
+            temperature = get_krdg()
 
             match mode:
                 case 0:  # Offset-compensated ohms method
