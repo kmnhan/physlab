@@ -172,8 +172,8 @@ def measure(
     if mode == 0:  # offset-compensated ohms method
         keithley.write("SENS:VOLT:OCOM ON")
     elif mode == 1:  # current-reversal method
-        q_res = collections.deque(maxlen=2)
-        q_temp = collections.deque(maxlen=2)
+        # q_res = collections.deque(maxlen=2)
+        # q_temp = collections.deque(maxlen=2)
         keithley.write("SENS:VOLT:OCOM OFF")
     elif mode == 2:  # delta method
         q_res = collections.deque(maxlen=3)
@@ -185,16 +185,14 @@ def measure(
     keithley.write("SOUR:CURR:RANG:AUTO ON")
     keithley.write("SOUR:CURR:VLIM 10")
 
-    if mode == 0:
-        keithley.write(f"SOUR:CURR {curr:.15f}")
-    else:
-        # keithley.write(':SOUR:CONF:LIST:CRE "physlab_alt_list"')
-
-        # keithley.write(':SOUR:CONF:LIST:STOR "physlab_alt_list"')
-
-        # keithley.write(f"SOUR:CURR {-curr:.15f}")
-        # keithley.write(':SOUR:CONF:LIST:STOR "physlab_alt_list"')
-        keithley.write(f":SOUR:SWE:CURR:LIN {curr:.15f}, {-curr:.15f}, 2")
+    match mode:
+        case 0:
+            # Offset-compensated ohms method
+            keithley.write(f"SOUR:CURR {curr:.15f}")
+        case 1:  # Current-reversal method
+            keithley.write(f":SOUR:SWE:CURR:LIN {curr:.15f}, {-curr:.15f}, 2")
+        case 2:  # Delta method
+            keithley.write(f"SOUR:CURR {curr:.15f}")
 
     # LakeShore325 temperature controller
     if resetlake:
@@ -235,6 +233,11 @@ def measure(
     keithley.write("OUTP ON")
 
     log.info("[Starting measurement]")
+
+    match mode:
+        case 2:
+            curr_sign = 1.0  # Store sign of previously measured current
+
     for k in range(2):
         # k = 0 : measure while going to the Start Temperature
         # k = 1 : measure while going to the End Temperature.
@@ -259,36 +262,46 @@ def measure(
             now: datetime.datetime = datetime.datetime.now()
             temperature: float = get_krdg()
 
-            if mode == 0:
-                resistance, current = (
-                    keithley.query(":MEAS:VOLT?; :SOUR:CURR?").strip().split(";")
-                )
-            else:
-                current = str(curr)
-                keithley.write("INIT")
-                keithley.write("*WAI")
-                msg = keithley.query('TRAC:DATA? 1, 2, "defbuffer1"')
+            match mode:
+                case 0:  # Offset-compensated ohms method
+                    resistance, current = (
+                        keithley.query(":MEAS:VOLT?; :SOUR:CURR?").strip().split(";")
+                    )
+
+                case 1:  # Current-reversal method
+                    current = str(curr)
+                    keithley.write("INIT")
+                    keithley.write("*WAI")
+                    msg = keithley.query('TRAC:DATA? 1, 2, "defbuffer1"')
+
+                case 2:  # Delta method
+                    keithley.write(f"SOUR:CURR {curr_sign * curr:.15f}")
+                    res_i, current = (
+                        keithley.query(":MEAS:VOLT?; :SOUR:CURR?").strip().split(";")
+                    )
 
             now = now + (datetime.datetime.now() - now) / 2
             temperature = (temperature + get_krdg()) / 2
 
-            flush_commands()
+            match mode:
+                case 1:  # Current-reversal method\
+                    # Take average of the two measurements
+                    resistance = str(sum(map(float, msg.split(","))) / 2)
 
-            if mode != 0:
-                # Calculate resistance
-                q_res.extend(map(float, msg.split(",")))
-                if len(q_res) == q_res.maxlen:
-                    if mode == 1:  # Current-reversal method
-                        resistance = str((q_res[0] + q_res[1]) / 2)
-                    elif mode == 2:  # Delta method
+                case 2:  # Delta method
+                    q_res.append(float(res_i))
+                    q_temp.append(float(temperature))
+
+                    if len(q_res) < 3:
+                        resistance = "nan"
+                    else:
                         resistance = str(np.abs(q_res[0] + q_res[2] + 2 * q_res[1]) / 4)
-                else:
-                    # Current reversal and delta method require 2 or 3 measurements
-                    resistance = "nan"
 
-                # Take moving average of temperature
-                q_temp.append(float(temperature))
-                temperature = sum(q_temp) / len(q_temp)
+                        # Take moving average of temperature
+                        temperature = sum(q_temp) / len(q_temp)
+
+                    # Reverse current sign for next measurement
+                    curr_sign *= -1.0
 
             if resistance != "nan":
                 writer.append(now, [str(temperature), resistance, current])
