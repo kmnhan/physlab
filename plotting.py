@@ -144,6 +144,8 @@ class PlotWindow(*uic.loadUiType("plotting.ui")):
         if len(self._data[0]) == 0:
             return
         x, y = self.xydata
+        if x.size == 0 or y.size == 0:
+            return
         self.line.setBounds((np.nanmin(x.values), np.nanmax(x.values)))
         if self.t_heat is None:
             self.curve0.setData(x=x.values, y=y.values)
