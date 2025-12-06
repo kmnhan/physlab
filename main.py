@@ -200,6 +200,8 @@ def measure(
     if resetlake:
         lake.write("*RST")
     lake.write(f"CSET 1,{TEMP_SENSOR_LOOP},1,0,2")  # Set loop 1 to control temperature
+    lake.write("TLMIT A,340")  # Increase T limit
+    lake.write("TLMIT B,340")  # Increase T limit
 
     # Populate zone 1 with PID parameters
     for i, (temprange, params) in enumerate(HEATER_PARAMETERS.items()):
